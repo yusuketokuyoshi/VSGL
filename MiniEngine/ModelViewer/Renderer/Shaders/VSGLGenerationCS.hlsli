@@ -51,7 +51,7 @@ void ThreadGroupSum(const uint groupIndex, const float4 position, const float3 a
 	const float3 powerSum = WaveActiveSum(power);
 	const uint laneCount = WaveGetLaneCount();
 
-	// Store the total for each work group into group shared memory.
+	// Store the total for each wave into group shared memory.
 	if (WaveIsFirstLane())
 	{
 		const uint index = groupIndex / laneCount;
