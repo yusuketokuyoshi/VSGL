@@ -8,13 +8,13 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
  - Approximate diffuse-to-diffuse, diffuse-to-glossy, glossy-to-diffuse, and glossy-to-glossy reflections
  - Completely dynamic, no precomputation and no lookup tables
- - Optimized for scenes lit by a spot light
+ - Specialized for scenes lit by a spotlight
 
 ### Algorithm
 
  1. Render a [reflective shadow map](https://doi.org/10.1145/1053427.1053460)
- 1. Generate a diffuse VSGL and glossy VSGL from the reflective shadow map
- 1. Compute lighting from the two VSGLs
+ 2. Generate a diffuse VSGL and glossy VSGL from the reflective shadow map
+ 3. Compute lighting from the two VSGLs
 
 ### Limitations
 
@@ -30,8 +30,8 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 ## Build and Run
 
  1. Open `MiniEngine/ModelViewer/ModelViewer_VS16.sln`
- 1. Select configuration: Debug (full validation), Profile (instrumented), Release
- 1. Build and run
+ 2. Select configuration: Debug (full validation), Profile (instrumented), Release
+ 3. Build and run
 
 ## Controls
 
