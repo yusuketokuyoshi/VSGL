@@ -1,5 +1,5 @@
-#ifndef MICROFACET_BRDF_HLSLI
-#define MICROFACET_BRDF_HLSLI
+#ifndef SMITH_GGX_BRDF_HLSLI
+#define SMITH_GGX_BRDF_HLSLI
 
 #include "NumericLimits.hlsli"
 #include "MathConstants.hlsli"
