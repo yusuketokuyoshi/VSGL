@@ -409,7 +409,6 @@ void Renderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera& s
 
 	const ScopedTimer profile(L"VSGL Generation", context);
 
-	context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	context.TransitionResource(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
