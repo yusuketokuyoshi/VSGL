@@ -81,12 +81,13 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 {
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// First we compute the interpolation factor.
-	// Unlike the paper, we use reciprocals of exponential functions by using negative exponents for the numerical stability.
+	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents for the numerical stability.
 	const float t = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
+	const float u = t * cosine;
 	const float a = exp(t);
-	const float b = exp(t * cosine);
-	const float c = exp(t * (1.0 + cosine)); // This is equivalent to a*b but more numerically stable.
-	const float s = (1.0 - c) / max((1.0 - a) * (1.0 + b), FLT_MIN); // We clamp the denominator for a special case: s = 0 for a = 1.
+	const float b = exp(u);
+	const float c = 1.0 - exp(t + u); // This is equivalent to 1 - a*b but more numerically stable.
+	const float s = c / max(c - a + b, FLT_MIN); // We clamp the denominator to avoid zero divide for sharpness -> 0.
 
 	// For the numerical stability, we clamp the sharpness with a small threshold.
 	const float THRESHOLD = 0x1.0p-24;
