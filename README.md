@@ -8,7 +8,7 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
  - Approximate diffuse-to-diffuse, diffuse-to-glossy, glossy-to-diffuse, and glossy-to-glossy reflections
  - Completely dynamic, no precomputation and no lookup tables
- - Specialized for scenes lit by a spotlight
+ - Specialized for scenes locally lit by a spotlight
 
 ### Algorithm
 
