@@ -1,8 +1,8 @@
 #include "CommandContext.h"
 #include "PostEffects.h"
 #include "GameInput.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/Scene.h"
+#include "Renderer.h"
+#include "Scene.h"
 
 using namespace GameCore;
 

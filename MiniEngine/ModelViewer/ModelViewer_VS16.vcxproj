@@ -69,7 +69,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ModelViewer.cpp" />
-    <ClCompile Include="Renderer\Renderer.cpp" />
+    <ClCompile Include="Renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Core/Core_VS16.vcxproj">
@@ -82,80 +82,80 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Renderer\Shaders\AnisotropicSphericalGaussian.hlsli" />
-    <None Include="Renderer\Shaders\OctahedralMapping.hlsli" />
-    <None Include="Renderer\Shaders\VSGLGenerationCS.hlsli" />
-    <None Include="Renderer\Shaders\MathConstants.hlsli" />
-    <None Include="Renderer\Shaders\SmithGGXBRDF.hlsli" />
-    <None Include="Renderer\Shaders\NumericLimits.hlsli" />
-    <None Include="Renderer\Shaders\NormalizedDeviceCoordinate.hlsli" />
-    <None Include="Renderer\Shaders\SGLight.hlsli" />
-    <None Include="Renderer\Shaders\SphericalGaussian.hlsli" />
-    <None Include="Renderer\Shaders\NormalMapUtility.hlsli" />
+    <None Include="Shaders\AnisotropicSphericalGaussian.hlsli" />
+    <None Include="Shaders\OctahedralMapping.hlsli" />
+    <None Include="Shaders\VSGLGenerationCS.hlsli" />
+    <None Include="Shaders\MathConstants.hlsli" />
+    <None Include="Shaders\SmithGGXBRDF.hlsli" />
+    <None Include="Shaders\NumericLimits.hlsli" />
+    <None Include="Shaders\NormalizedDeviceCoordinate.hlsli" />
+    <None Include="Shaders\SGLight.hlsli" />
+    <None Include="Shaders\SphericalGaussian.hlsli" />
+    <None Include="Shaders\NormalMapUtility.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Renderer\Renderer.h" />
-    <ClInclude Include="Renderer\Scene.h" />
-    <ClInclude Include="Renderer\Shaders\VSGLGenerationSetting.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="Shaders\VSGLGenerationSetting.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Renderer\Shaders\LightingHSGCutoutPS.hlsl">
+    <FxCompile Include="Shaders\LightingHSGCutoutPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\LightingHSGPS.hlsl">
+    <FxCompile Include="Shaders\LightingHSGPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\LightingCutoutPS.hlsl">
+    <FxCompile Include="Shaders\LightingCutoutPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\LightingPS.hlsl">
+    <FxCompile Include="Shaders\LightingPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\DepthCutoutPS.hlsl">
+    <FxCompile Include="Shaders\DepthCutoutPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\DepthCutoutVS.hlsl">
+    <FxCompile Include="Shaders\DepthCutoutVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\DepthVS.hlsl">
+    <FxCompile Include="Shaders\DepthVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\LightingVS.hlsl">
+    <FxCompile Include="Shaders\LightingVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\ReflectiveShadowMapCutoutPS.hlsl">
+    <FxCompile Include="Shaders\ReflectiveShadowMapCutoutPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\ReflectiveShadowMapPS.hlsl">
+    <FxCompile Include="Shaders\ReflectiveShadowMapPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\ReflectiveShadowMapVS.hlsl">
+    <FxCompile Include="Shaders\ReflectiveShadowMapVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Renderer\Shaders\VSGLGenerationDiffuseCS.hlsl" />
-    <FxCompile Include="Renderer\Shaders\VSGLGenerationSpecularCS.hlsl" />
+    <FxCompile Include="Shaders\VSGLGenerationDiffuseCS.hlsl" />
+    <FxCompile Include="Shaders\VSGLGenerationSpecularCS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemDefinitionGroup>
