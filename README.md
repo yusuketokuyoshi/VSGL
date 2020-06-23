@@ -12,9 +12,9 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
 ### Algorithm
 
- 1. Render a [reflective shadow map](https://doi.org/10.1145/1053427.1053460)
- 2. Generate a diffuse VSGL and glossy VSGL from the reflective shadow map
- 3. Compute lighting from the two VSGLs
+ 1. [Render a reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/ReflectiveShadowMapPS.hlsl)
+ 2. [Generate a diffuse VSGL and glossy VSGL from the reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/VSGLGenerationCS.hlsli)
+ 3. [Compute lighting from the two VSGLs](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/LightingPS.hlsl)
 
 ### Limitations
 
@@ -54,4 +54,4 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
 ## License
 
-This software is released under the MIT License, see `LICENSE.txt`.
+This software is released under the MIT License, see [`LICENSE.txt`](https://github.com/yusuketokuyoshi/VSGL/blob/master/LICENSE.txt).
