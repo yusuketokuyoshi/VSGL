@@ -53,7 +53,7 @@ namespace Graphics
     extern EnumVar DebugZoom;
 }
 
-void CameraController::Update( const float deltaTime, const bool enableInput )
+void CameraController::Update( float deltaTime )
 {
     (deltaTime);
 
@@ -70,29 +70,22 @@ void CameraController::Update( const float deltaTime, const bool enableInput )
 
     float yaw = GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogRightStickX ) * m_HorizontalLookSensitivity * panScale;
     float pitch = GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogRightStickY ) * m_VerticalLookSensitivity * panScale;
-    float forward = 0.0f;
-    float strafe = 0.0f;
-    float ascent = 0.0f;
-
-    if (enableInput)
-    {
-        forward = m_MoveSpeed * speedScale * (
-            GameInput::GetTimeCorrectedAnalogInput(GameInput::kAnalogLeftStickY) +
-            (GameInput::IsPressed(GameInput::kKey_w) ? deltaTime : 0.0f) +
-            (GameInput::IsPressed(GameInput::kKey_s) ? -deltaTime : 0.0f)
-            );
-        strafe = m_StrafeSpeed * speedScale * (
-            GameInput::GetTimeCorrectedAnalogInput(GameInput::kAnalogLeftStickX) +
-            (GameInput::IsPressed(GameInput::kKey_d) ? deltaTime : 0.0f) +
-            (GameInput::IsPressed(GameInput::kKey_a) ? -deltaTime : 0.0f)
-            );
-        ascent = m_StrafeSpeed * speedScale * (
-            GameInput::GetTimeCorrectedAnalogInput(GameInput::kAnalogRightTrigger) -
-            GameInput::GetTimeCorrectedAnalogInput(GameInput::kAnalogLeftTrigger) +
-            (GameInput::IsPressed(GameInput::kKey_e) ? deltaTime : 0.0f) +
-            (GameInput::IsPressed(GameInput::kKey_q) ? -deltaTime : 0.0f)
-            );
-    }
+    float forward = m_MoveSpeed * speedScale * (
+        GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogLeftStickY ) +
+        (GameInput::IsPressed( GameInput::kKey_w ) ? deltaTime : 0.0f) +
+        (GameInput::IsPressed( GameInput::kKey_s ) ? -deltaTime : 0.0f)
+        );
+    float strafe = m_StrafeSpeed * speedScale * (
+        GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogLeftStickX  ) +
+        (GameInput::IsPressed( GameInput::kKey_d ) ? deltaTime : 0.0f) +
+        (GameInput::IsPressed( GameInput::kKey_a ) ? -deltaTime : 0.0f)
+        );
+    float ascent = m_StrafeSpeed * speedScale * (
+        GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogRightTrigger ) -
+        GameInput::GetTimeCorrectedAnalogInput( GameInput::kAnalogLeftTrigger ) +
+        (GameInput::IsPressed( GameInput::kKey_e ) ? deltaTime : 0.0f) +
+        (GameInput::IsPressed( GameInput::kKey_q ) ? -deltaTime : 0.0f)
+        );
 
     if (m_Momentum)
     {
@@ -103,12 +96,9 @@ void CameraController::Update( const float deltaTime, const bool enableInput )
         ApplyMomentum(m_LastAscent, ascent, deltaTime);
     }
 
-    if (enableInput)
-    {
-        // don't apply momentum to mouse inputs
-        yaw += GameInput::GetAnalogInput(GameInput::kAnalogMouseX) * m_MouseSensitivityX;
-        pitch += GameInput::GetAnalogInput(GameInput::kAnalogMouseY) * m_MouseSensitivityY;
-    }
+    // don't apply momentum to mouse inputs
+    yaw += GameInput::GetAnalogInput(GameInput::kAnalogMouseX) * m_MouseSensitivityX;
+    pitch += GameInput::GetAnalogInput(GameInput::kAnalogMouseY) * m_MouseSensitivityY;
 
     m_CurrentPitch += pitch;
     m_CurrentPitch = XMMin( XM_PIDIV2, m_CurrentPitch);

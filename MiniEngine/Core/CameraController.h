@@ -31,7 +31,7 @@ namespace GameCore
         // Assumes worldUp is not the X basis vector
         CameraController( Camera& camera, Vector3 worldUp );
 
-        void Update( const float deltaTime, const bool enableInput );
+        void Update( float dt );
 
         void SlowMovement( bool enable ) { m_FineMovement = enable; }
         void SlowRotation( bool enable ) { m_FineRotation = enable; }

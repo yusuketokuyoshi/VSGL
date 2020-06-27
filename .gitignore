@@ -1,4 +1,4 @@
-/MiniEngine/ModelViewer/.vs
-/MiniEngine/ModelViewer/*.user
-/MiniEngine/Build_VS16
+.vs
+*.user
+/Build_VS16
 /Packages

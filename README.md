@@ -12,9 +12,9 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
 ### Algorithm
 
- 1. [Render a reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/ReflectiveShadowMapPS.hlsl)
- 2. [Generate a diffuse VSGL and glossy VSGL from the reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/VSGLGenerationCS.hlsli)
- 3. [Compute lighting from the two VSGLs](https://github.com/yusuketokuyoshi/VSGL/blob/master/MiniEngine/ModelViewer/Shaders/LightingPS.hlsl)
+ 1. [Render a reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/ReflectiveShadowMapPS.hlsl)
+ 2. [Generate a diffuse VSGL and glossy VSGL from the reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/VSGLGenerationCS.hlsli)
+ 3. [Compute lighting from the two VSGLs](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/LightingPS.hlsl)
 
 ### Limitations
 
@@ -29,7 +29,7 @@ This method generates two *[virtual spherical Gaussian light sources](https://yu
 
 ## Build and Run
 
- 1. Open `MiniEngine/ModelViewer/ModelViewer_VS16.sln`
+ 1. Open `ModelViewer/ModelViewer_VS16.sln`
  2. Select configuration: Debug (full validation), Profile (instrumented), Release
  3. Build and run
 
