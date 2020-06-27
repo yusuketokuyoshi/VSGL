@@ -82,11 +82,14 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// First we compute the interpolation factor.
 	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents for the numerical stability.
-	const float t = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
+	// In addition, we use exp2 instead of exp, therefore coefficients are divided by log(2) as follows:
+	// -1.6988/log(2) = -2.4508503,
+	// -10.8438/log(2) = -15.644297.
+	const float t = sqrt(sharpness) * sharpness * (-2.4508503 * sharpness - 15.644297) / ((sharpness + 6.2201) * sharpness + 10.2415);
 	const float u = t * cosine;
-	const float a = exp(t);
-	const float b = exp(u);
-	const float c = 1.0 - exp(t + u); // This is equivalent to 1 - a*b but more numerically stable.
+	const float a = exp2(t);
+	const float b = exp2(u);
+	const float c = 1.0 - exp2(t + u); // Equivalent to 1 - a*b, but more numerically stable.
 	const float s = c / max(c - a + b, FLT_MIN); // We clamp the denominator to avoid zero divide for sharpness -> 0.
 
 	// For the numerical stability, we clamp the sharpness with a small threshold.
@@ -97,7 +100,7 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpnessClamped.
 	// Lower hemispherical integral: 2pi*e*(1 - e)/sharpnessClamped.
-	// Since this function returns the integral devided by 2pi, 2pi is eliminated from the code.
+	// Since this function returns the integral divided by 2pi, 2pi is eliminated from the code.
 	return lerp(e, 1.0, s) * (1.0 - e) / sharpnessClamped;
 }
 
