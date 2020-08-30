@@ -33,7 +33,10 @@
       <ObjectFileOutput />
     </FxCompile>
     <PreBuildEvent>
-      <Command>md $(SolutionDir)..\Build_VS16\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders</Command>
+      <Command>
+		  md $(SolutionDir)..\Build_VS16\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders &gt; NUL 2&gt;&amp;1
+		  if ERRORLEVEL 1 cmd /c exit 0
+	  </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
