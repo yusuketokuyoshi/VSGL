@@ -32,6 +32,9 @@
       <HeaderFileOutput>$(SolutionDir)..\Build_VS16\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders\%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
     </FxCompile>
+    <PreBuildEvent>
+      <Command>md $(SolutionDir)..\Build_VS16\$(Platform)\$(Configuration)\Output\$(ProjectName)\CompiledShaders</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
