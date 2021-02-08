@@ -252,6 +252,16 @@ void Renderer::Create()
 	}
 }
 
+void Renderer::Clear()
+{
+	s_shadowMap.Destroy();
+	s_rsmDepthBuffer.Destroy();
+	s_rsmNormalBuffer.Destroy();
+	s_rsmDiffuseBuffer.Destroy();
+	s_rsmSpecularBuffer.Destroy();
+	s_sgLightBuffer.Destroy();
+}
+
 void Renderer::Render(GraphicsContext& context, const Scene& scene)
 {
 	// Initialize rendering buffers.

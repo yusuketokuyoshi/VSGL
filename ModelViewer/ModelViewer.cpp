@@ -53,6 +53,7 @@ void ModelViewer::Startup()
 void ModelViewer::Cleanup()
 {
 	m_scene.Clear();
+	Renderer::Clear();
 }
 
 void ModelViewer::Update(const float deltaT)
