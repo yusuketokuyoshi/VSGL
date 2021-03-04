@@ -384,15 +384,13 @@ void Renderer::LightingPass(GraphicsContext& context, const Scene& scene)
 	XMStoreFloat3(&constants.lightPosition, scene.m_spotLight.GetPosition());
 	constants.lightIntensity = scene.m_spotLightIntensity;
 
-	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[] = { s_shadowMap.GetDepthSRV() };
-
 	context.SetRootSignature(s_lightingRootSignature);
 	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
 	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProjection), &viewProjection);
 	context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
 	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
-	context.SetDynamicDescriptors(ROOT_INDEX_PS_SRV, Scene::MODEL_SRV_COUNT, _countof(srvs), srvs);
+	context.SetDynamicDescriptor(ROOT_INDEX_PS_SRV, Scene::MODEL_SRV_COUNT, s_shadowMap.GetDepthSRV());
 	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
 	context.SetPipelineState(EnableHSGConvolution ? s_lightingHSGPSO : s_lightingPSO);
 	Draw(context, scene.m_model, Scene::MODEL_SRV_COUNT);
