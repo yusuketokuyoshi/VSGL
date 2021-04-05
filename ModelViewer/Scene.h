@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Model.h"
+#include "ModelH3D.h"
 #include "Camera.h"
 #include "CameraController.h"
 
@@ -12,16 +12,16 @@ public:
 		m_model.Clear();
 		m_modelCutout.Clear();
 		m_cameraController.release();
-		m_spotLightController.release();
+		m_spotlightController.release();
 	}
 
-	static constexpr uint32_t                   MODEL_SRV_COUNT = 4;
-	static constexpr uint32_t                   CUTOUT_SRV_COUNT = 1; // Alpha cutout for the depth pass.
-	Model                                       m_model;
-	Model                                       m_modelCutout;
-	Math::Camera                                m_camera;
-	std::unique_ptr<GameCore::CameraController> m_cameraController;
-	Math::Camera                                m_spotLight;
-	std::unique_ptr<GameCore::CameraController> m_spotLightController;
-	float                                       m_spotLightIntensity = 0.0f;
+	static constexpr uint32_t         MODEL_SRV_COUNT = 4;
+	static constexpr uint32_t         CUTOUT_SRV_COUNT = 1; // Alpha cutout for the depth pass.
+	ModelH3D                          m_model;
+	ModelH3D                          m_modelCutout;
+	Math::Camera                      m_camera;
+	std::unique_ptr<CameraController> m_cameraController;
+	Math::Camera                      m_spotlight;
+	std::unique_ptr<CameraController> m_spotlightController;
+	float                             m_spotlightIntensity = 0.0f;
 };

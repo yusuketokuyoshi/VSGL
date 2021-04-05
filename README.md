@@ -24,12 +24,12 @@ It roughly approximates virtual point lights (VPLs) with two *[virtual spherical
 
 ## Requirements
 
- - [Visual Studio 2019](https://visualstudio.com/) with [Windows 10 SDK](https://developer.microsoft.com/en-US/windows/downloads/windows-10-sdk/)
- - Shader Model 6.0 capable GPU
+ - Windows 10 version 2004
+ - [Visual Studio 2019](https://visualstudio.com/) with [Windows 10 SDK version 2004](https://developer.microsoft.com/en-US/windows/downloads/windows-10-sdk/)
 
-## Build and Run
+## Getting Started
 
- 1. Open `ModelViewer/ModelViewer_VS16.sln`
+ 1. Open `ModelViewer/ModelViewer.sln`
  2. Select configuration: Debug (full validation), Profile (instrumented), Release
  3. Build and run
 
