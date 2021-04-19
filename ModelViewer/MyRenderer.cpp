@@ -300,7 +300,7 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
 {
     const ScopedTimer profile(L"Reflective Shadow Map", context);
 
-    const XMMATRIX& viewProjection = scene.m_spotlight.GetViewProjMatrix();
+    const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
     const D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {
         s_rsmNormalBuffer.GetRTV(),
         s_rsmDiffuseBuffer.GetRTV(),
@@ -311,7 +311,7 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
     context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
     context.SetViewportAndScissor(0, 0, s_rsmDepthBuffer.GetWidth(), s_rsmDepthBuffer.GetHeight());
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProjection), &viewProjection);
+    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
     context.SetRenderTargets(_countof(rtvs), rtvs, s_rsmDepthBuffer.GetDSV());
     context.SetPipelineState(s_reflectiveShadowMapPSO);
     Draw(context, scene.m_model);
@@ -332,12 +332,12 @@ void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
 {
     const ScopedTimer profile(L"Shadow Map", context);
 
-    const XMMATRIX& viewProjection = scene.m_spotlight.GetViewProjMatrix();
+    const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
 
     context.SetRootSignature(s_depthRootSig);
     context.SetViewportAndScissor(0, 0, s_shadowMap.GetWidth(), s_shadowMap.GetHeight());
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProjection), &viewProjection);
+    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
     context.SetDepthStencilTarget(s_shadowMap.GetDSV());
     context.SetPipelineState(s_shadowMapPSO);
     DrawDepth(context, scene.m_model);
@@ -356,12 +356,12 @@ void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
 {
     const ScopedTimer profile(L"Depth", context);
 
-    const XMMATRIX& viewProjection = scene.m_camera.GetViewProjMatrix();
+    const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
 
     context.SetRootSignature(s_depthRootSig);
     context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProjection), &viewProjection);
+    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
     context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
     context.SetPipelineState(s_depthPSO);
     DrawDepth(context, scene.m_model);
@@ -382,16 +382,16 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
     context.TransitionResource(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-    const XMMATRIX& viewProjection = scene.m_camera.GetViewProjMatrix();
+    const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
 
     __declspec(align(16)) struct {
-        XMMATRIX lightViewProjection;
+        XMMATRIX lightViewProj;
         XMVECTOR cameraPosition;
         XMFLOAT3 lightPosition;
         float    lightIntensity;
     } constants;
 
-    constants.lightViewProjection = scene.m_spotlight.GetViewProjMatrix();
+    constants.lightViewProj = scene.m_spotlight.GetViewProjMatrix();
     constants.cameraPosition = scene.m_camera.GetPosition();
     XMStoreFloat3(&constants.lightPosition, scene.m_spotlight.GetPosition());
     constants.lightIntensity = scene.m_spotlightIntensity;
@@ -400,7 +400,7 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
     context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
     context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProjection), &viewProjection);
+    context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
     context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
     context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
     context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
@@ -440,13 +440,13 @@ void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera&
     const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
 
     __declspec(align(16)) struct {
-        XMMATRIX lightViewProjectionInv;
+        XMMATRIX lightViewProjInv;
         XMVECTOR lightPosition;
         XMFLOAT3 lightAxis;
         float    photonPower;
     } constants;
 
-    constants.lightViewProjectionInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
+    constants.lightViewProjInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
     constants.lightPosition = spotLight.GetPosition();
     XMStoreFloat3(&constants.lightAxis, XMVector3Cross(spotLight.GetUpVec(), spotLight.GetRightVec()));
     constants.photonPower = photonPower;

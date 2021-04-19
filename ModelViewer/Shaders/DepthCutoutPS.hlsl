@@ -3,7 +3,7 @@ SamplerState      textureSampler : register(s0);
 
 struct Input
 {
-	float4 position : SV_Position;
+	float4 pos : SV_Position;
 	float2 texcoord : TEXCOORD;
 };
 

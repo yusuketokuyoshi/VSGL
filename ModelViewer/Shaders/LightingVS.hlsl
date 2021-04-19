@@ -1,11 +1,11 @@
 cbuffer cb : register(b0)
 {
-	float4x4 g_viewProjection;
+	float4x4 g_viewProj;
 };
 
 struct Input
 {
-	float3 position : POSITION;
+	float3 pos : POSITION;
 	float2 texcoord : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangent : TANGENT;
@@ -14,8 +14,8 @@ struct Input
 
 struct Output
 {
-	float4 position : SV_Position;
-	float3 worldPosition : POSITION1;
+	float4 pos : SV_Position;
+	float3 wpos : POSITION1;
 	float2 texcoord : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangent : TANGENT;
@@ -25,8 +25,8 @@ struct Output
 Output main(const Input input)
 {
 	Output output;
-	output.position = mul(g_viewProjection, float4(input.position, 1.0));
-	output.worldPosition = input.position;
+	output.pos = mul(g_viewProj, float4(input.pos, 1.0));
+	output.wpos = input.pos;
 	output.texcoord = input.texcoord;
 	output.normal = input.normal;
 	output.tangent = input.tangent;

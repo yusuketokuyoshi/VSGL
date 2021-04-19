@@ -13,7 +13,7 @@ SamplerComparisonState shadowSampler  : register(s1);
 
 cbuffer cb0 : register(b0)
 {
-	float4x4 g_lightViewProjection;
+	float4x4 g_lightViewProj;
 	float3   g_cameraPosition;
 	float3   g_lightPosition;
 	float    g_lightIntensity;
@@ -28,8 +28,8 @@ cbuffer cb1 : register(b1)
 
 struct Input
 {
-	float4 position : SV_Position;
-	float3 worldPosition : POSITION1;
+	float4 pos : SV_Position;
+	float3 wpos : POSITION1;
 	float2 texcoord : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangent : TANGENT;
@@ -102,21 +102,21 @@ float3 main(const Input input) : SV_Target
 	const float4 specular = specularMap.Sample(textureSampler, input.texcoord);
 	const float3 normalTS = DecodeNormalMap(normalMap.Sample(textureSampler, input.texcoord));
 	const float3 normal = mul(normalTS, tangentFrame);
-	const float3 viewDir = normalize(g_cameraPosition - input.worldPosition);
+	const float3 viewDir = normalize(g_cameraPosition - input.wpos);
 	const float squaredRoughness = PerceptualRoughnessToSquaredRoughness(specular.w);
 
 	// Direct illumination.
-	const float3 lightVec = g_lightPosition - input.worldPosition;
+	const float3 lightVec = g_lightPosition - input.wpos;
 	const float lightSquaredDistance = dot(lightVec, lightVec);
 	const float3 lightDir = lightVec * rsqrt(lightSquaredDistance);
-	const float3 shadowNDC = NDCTransform(input.worldPosition, g_lightViewProjection);
+	const float3 shadowNDC = NDCTransform(input.wpos, g_lightViewProj);
 	const float2 shadowTexcoord = NDCToTexcoord(shadowNDC.xy);
 	const float visibility = shadowMap.SampleCmpLevelZero(shadowSampler, shadowTexcoord, saturate(shadowNDC.z));
 	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(viewDir, lightDir, normal, squaredRoughness); // Fresnel = 1 in this implementation.
 	const float3 directIllumination = brdf * g_lightIntensity * (visibility * saturate(dot(normal, lightDir)) / lightSquaredDistance);
 
 	// Indirect illumination using VSGLs.
-	const float3 indirectIllumination = SGLighting(viewDir, input.worldPosition, normal, diffuse, specular.xyz, squaredRoughness);
+	const float3 indirectIllumination = SGLighting(viewDir, input.wpos, normal, diffuse, specular.xyz, squaredRoughness);
 
 	return directIllumination + indirectIllumination;
 }

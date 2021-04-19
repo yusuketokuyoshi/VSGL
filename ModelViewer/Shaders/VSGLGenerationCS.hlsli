@@ -18,7 +18,7 @@ Texture2D<float4>           specularBuffer : register(t2);
 
 cbuffer cb0 : register(b0)
 {
-	float4x4 g_lightViewProjectionInv;
+	float4x4 g_lightViewProjInv;
 	float3   g_lightPosition;
 	float3   g_lightAxis;
 	float    g_photonPower;
@@ -144,7 +144,7 @@ void main(const uint2 threadID : SV_DispatchThreadID, const uint groupIndex : SV
 
 			// Reconstruct the VPL.
 			const float2 texcoord = (texelID + 0.5) / RSM_WIDTH;
-			const float3 position = GetWorldPosition(texcoord, depth, g_lightViewProjectionInv);
+			const float3 position = GetWorldPosition(texcoord, depth, g_lightViewProjInv);
 			const float3 direction = normalize(position - g_lightPosition);
 			const float c = dot(direction, g_lightAxis);
 			const float jacobian = c * c * c; // Jacobian for the transformation from the image plane to the directional space.
