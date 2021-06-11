@@ -46,6 +46,7 @@ void ModelViewer::Startup()
 	const Vector3 LIGHT_DIR = { 1.0, -0.5, -1.0 };
 	m_scene.m_spotlight.SetEyeAtUp(LIGHT_POS, LIGHT_POS + LIGHT_DIR, Vector3(kYUnitVector));
 	m_scene.m_spotlight.SetZRange(NEAR_Z_CLIP, FAR_Z_CLIP);
+	m_scene.m_spotlight.SetAspectRatio(1.0f);
 	m_scene.m_spotlightController.reset(new FlyingFPSCamera(m_scene.m_spotlight, Vector3(kYUnitVector)));
 	m_scene.m_spotlightController->Update(0.0f);
 }
