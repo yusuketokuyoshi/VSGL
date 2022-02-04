@@ -55,13 +55,11 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 
 // Exact product integral
 // [Tsai and Shih. 2006, "All-Frequency Precomputed Radiance Transfer using Spherical Radial Basis Functions and Clustered Tensor Approximation"].
-float SGProductIntegral(const float3 axis1, const float sharpness1, const float3 axis2, const float sharpness2)
+float SGProductIntegral(const SGLobe sg1, const SGLobe sg2)
 {
-	const float sharpnessSum = sharpness1 + sharpness2;
-	const float sharpness = length(axis1 * sharpness1 + axis2 * sharpness2);
+	const SGLobe lobe = SGProduct(sg1.axis, sg1.sharpness, sg2.axis, sg2.sharpness);
 
-	// Instead of using sinh(), we use the following numerically stable form:
-	return 2.0 * M_PI * (exp(sharpness - sharpnessSum) - exp(-sharpness - sharpnessSum)) / sharpness;
+	return exp(sg1.logCoefficient + sg2.logCoefficient + lobe.logCoefficient) * SGIntegral(lobe.sharpness);
 }
 
 // Approximate product integral / pi.
