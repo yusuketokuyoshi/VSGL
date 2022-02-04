@@ -21,11 +21,17 @@ float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, con
 // Exact solution of an SG integral.
 float SGIntegral(const float sharpness)
 {
-	// For the numerical stability, we clamp the sharpness with a small threshold.
-	const float THRESHOLD = 0x1.0p-24;
-	const float sharpnessClamped = max(sharpness, THRESHOLD);
-
-	return 2.0 * M_PI * (1.0 - exp(-2.0 * sharpnessClamped)) / sharpnessClamped;
+	if (sharpness > 0.125)
+	{
+		return 2.0 * M_PI * (1.0 - exp(-2.0 * sharpness)) / sharpness;
+	}
+	else
+	{
+		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using a Taylor series.
+		// This approximation error is smaller than the numerical error of the exact form.
+		// TODO: Use expm1 function if available.
+		return 2.0 * M_PI * ((((((-4.0 / 45.0) * sharpness + 4.0 / 15.0) * sharpness - 2.0 / 3.0) * sharpness + 4.0 / 3.0) * sharpness - 2.0) * sharpness + 2.0);
+	}
 }
 
 // Approximate solution for an SG integral.
@@ -90,18 +96,26 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	const float a = exp2(t);
 	const float b = exp2(u);
 	const float c = 1.0 - exp2(t + u); // Equivalent to 1 - a*b, but more numerically stable.
-	const float s = c / max(c - a + b, FLT_MIN); // We clamp the denominator to avoid zero divide for sharpness -> 0.
-
-	// For the numerical stability, we clamp the sharpness with a small threshold.
-	const float THRESHOLD = 0x1.0p-24;
-	const float sharpnessClamped = max(sharpness, THRESHOLD);
-	const float e = exp(-sharpnessClamped);
+	const float lerpFactor = c / max(c - a + b, FLT_MIN); // We clamp the denominator to avoid zero divide for sharpness -> 0.
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
-	// Upper hemispherical integral: 2pi*(1 - e)/sharpnessClamped.
-	// Lower hemispherical integral: 2pi*e*(1 - e)/sharpnessClamped.
+	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
+	// Lower hemispherical integral: 2pi*e*(1 - e)/sharpness.
 	// Since this function returns the integral divided by 2pi, 2pi is eliminated from the code.
-	return lerp(e, 1.0, s) * (1.0 - e) / sharpnessClamped;
+	const float e = exp(-sharpness);
+	const float w = lerp(e, 1.0, lerpFactor); // (1 - e)/sharpness will be multiplied later.
+
+	if (sharpness > 0.25)
+	{
+		return w * (1.0 - e) / sharpness;
+	}
+	else
+	{
+		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using a Taylor series.
+		// This approximation error is smaller than the numerical error of the exact form.
+		// TODO: Use expm1 function if available.
+		return w * ((((((-1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
+	}
 }
 
 // Approximate hemispherical integral of an SG.
