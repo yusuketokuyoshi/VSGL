@@ -27,7 +27,7 @@ float SGIntegral(const float sharpness)
 	}
 	else
 	{
-		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using a Taylor series.
+		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
 		// TODO: Use expm1 function if available.
 		return 2.0 * M_PI * ((((((-4.0 / 45.0) * sharpness + 4.0 / 15.0) * sharpness - 2.0 / 3.0) * sharpness + 4.0 / 3.0) * sharpness - 2.0) * sharpness + 2.0);
@@ -111,7 +111,7 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	}
 	else
 	{
-		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using a Taylor series.
+		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
 		// TODO: Use expm1 function if available.
 		return w * ((((((-1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
