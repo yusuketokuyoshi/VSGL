@@ -13,6 +13,22 @@ struct SGLobe
 	float  logCoefficient;
 };
 
+// Compute 1 - exp(x) in a numerically stable manner.
+// Use -expm1(x) instead of this function if expm1 is available.
+float OneMinusExp(const float x)
+{
+	if (abs(x) > 0.25)
+	{
+		return 1.0 - exp(x);
+	}
+	else
+	{
+		// To improve the numerical stability for a small x, we approximate 1 - exp(x) using Taylor series.
+		// This approximation error is smaller than the numerical error of the exact form.
+		return ((((((-1.0 / 720.0) * x - 1.0 / 120.0) * x - 1.0 / 24.0) * x - 1.0 / 6.0) * x - 1.0 / 2.0) * x - 1.0) * x;
+	}
+}
+
 float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, const float logCoefficient = 0.0)
 {
 	return exp(logCoefficient + sharpness * (dot(dir, axis) - 1.0));
@@ -86,15 +102,9 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// First we compute the interpolation factor.
 	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents for the numerical stability.
-	// In addition, we use exp2 instead of exp, therefore coefficients are divided by log(2) as follows:
-	// -1.6988/log(2) = -2.4508503,
-	// -10.8438/log(2) = -15.644297.
-	const float t = sqrt(sharpness) * sharpness * (-2.4508503 * sharpness - 15.644297) / ((sharpness + 6.2201) * sharpness + 10.2415);
-	const float u = t * cosine;
-	const float a = exp2(t);
-	const float b = exp2(u);
-	const float c = 1.0 - exp2(t + u); // Equivalent to 1 - a*b, but more numerically stable.
-	const float lerpFactor = c / max(c - a + b, FLT_MIN); // We clamp the denominator to avoid zero divide for sharpness -> 0.
+	const float t = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
+	const float u = t * clamp(cosine, -1.0, 1.0);
+	const float lerpFactor = saturate(OneMinusExp(t + u) / (OneMinusExp(t) * (1.0 + exp(u)))); // TODO: Use expm1 instead of OneMinusExp if available.
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
