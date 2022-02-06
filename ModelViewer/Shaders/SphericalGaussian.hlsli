@@ -63,7 +63,13 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 {
 	const float3 axis = axis1 * sharpness1 + axis2 * sharpness2;
 	const float sharpness = length(axis);
-	const float logCoefficient = min(sharpness - sharpness1 - sharpness2, 0.0);
+
+	// Compute logCoefficient = sharpness - sharpness1 - sharpness2 in a numerically stable form.
+	const float cosine = clamp(dot(axis1, axis2), -1.0, 1.0);
+	const float sharpnessMin = min(sharpness1, sharpness2);
+	const float sharpnessRatio = sharpnessMin / max(sharpness1, sharpness2);
+	const float logCoefficient = 2.0 * sharpnessMin * (cosine - 1.0) / (sqrt(2.0 * sharpnessRatio * cosine + sharpnessRatio * sharpnessRatio + 1.0) + sharpnessRatio + 1.0);
+
 	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logCoefficient };
 
 	return result;
