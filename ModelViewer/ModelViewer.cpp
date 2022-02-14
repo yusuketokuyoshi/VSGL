@@ -19,8 +19,6 @@ private:
 	Scene m_scene;
 };
 
-CREATE_APPLICATION(ModelViewer)
-
 void ModelViewer::Startup()
 {
 	Renderer::Initialize();
@@ -79,4 +77,10 @@ void ModelViewer::RenderScene()
 	GraphicsContext& context = GraphicsContext::Begin(L"Rendering");
 	MyRenderer::Render(context, m_scene);
 	context.Finish();
+}
+
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/, _In_ int nCmdShow)
+{
+	ModelViewer modelViewer;
+	return GameCore::RunApplication(modelViewer, L"ModelViewer", hInstance, nCmdShow);
 }
