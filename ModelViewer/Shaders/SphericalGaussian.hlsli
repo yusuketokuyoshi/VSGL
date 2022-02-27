@@ -13,19 +13,17 @@ struct SGLobe
 	float  logCoefficient;
 };
 
-// Compute 1 - exp(x) in a numerically stable manner.
-// Use -expm1(x) instead of this function if expm1 is available.
-float OneMinusExp(const float x)
+float expm1(const float x)
 {
-	if (abs(x) > 0.25)
+	if (abs(x) > 0.5)
 	{
-		return 1.0 - exp(x);
+		return exp(x) - 1.0;
 	}
 	else
 	{
-		// To improve the numerical stability for a small x, we approximate 1 - exp(x) using Taylor series.
+		// To improve the numerical stability for a small x, we approximate exp(x) - 1 using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		return ((((((-1.0 / 720.0) * x - 1.0 / 120.0) * x - 1.0 / 24.0) * x - 1.0 / 6.0) * x - 1.0 / 2.0) * x - 1.0) * x;
+		return ((((((((1.0 / 362880.0 * x + 1.0 / 40320.0) * x + 1.0 / 5040.0) * x + 1.0 / 720.0) * x + 1.0 / 120.0) * x + 1.0 / 24.0) * x + 1.0f / 6.0) * x + 1.0 / 2.0) * x + 1.0) * x;
 	}
 }
 
@@ -45,7 +43,6 @@ float SGIntegral(const float sharpness)
 	{
 		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		// TODO: Use expm1 function if available.
 		return 2.0 * M_PI * ((((((-4.0 / 45.0) * sharpness + 4.0 / 15.0) * sharpness - 2.0 / 3.0) * sharpness + 4.0 / 3.0) * sharpness - 2.0) * sharpness + 2.0);
 	}
 }
@@ -110,7 +107,7 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents for the numerical stability.
 	const float t = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
 	const float u = t * clamp(cosine, -1.0, 1.0);
-	const float lerpFactor = saturate(OneMinusExp(t + u) / (OneMinusExp(t) * (1.0 + exp(u)))); // TODO: Use expm1 instead of OneMinusExp if available.
+	const float lerpFactor = saturate(expm1(t + u) / (expm1(t) * (1.0 + exp(u))));
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
@@ -127,7 +124,6 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	{
 		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		// TODO: Use expm1 function if available.
 		return w * ((((((-1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
 	}
 }
