@@ -23,7 +23,7 @@ float expm1(const float x)
 	{
 		// To improve the numerical stability for a small x, we approximate exp(x) - 1 using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		return ((((((((1.0 / 362880.0 * x + 1.0 / 40320.0) * x + 1.0 / 5040.0) * x + 1.0 / 720.0) * x + 1.0 / 120.0) * x + 1.0 / 24.0) * x + 1.0f / 6.0) * x + 1.0 / 2.0) * x + 1.0) * x;
+		return ((((((((1.0 / 362880.0 * x + 1.0 / 40320.0) * x + 1.0 / 5040.0) * x + 1.0 / 720.0) * x + 1.0 / 120.0) * x + 1.0 / 24.0) * x + 1.0 / 6.0) * x + 1.0 / 2.0) * x + 1.0) * x;
 	}
 }
 
@@ -116,7 +116,7 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	const float e = exp(-sharpness);
 	const float w = lerp(e, 1.0, lerpFactor); // (1 - e)/sharpness will be multiplied later.
 
-	if (sharpness > 0.25)
+	if (sharpness > 0.5)
 	{
 		return w * (1.0 - e) / sharpness;
 	}
@@ -124,7 +124,7 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	{
 		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		return w * ((((((-1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
+		return w * ((((((((1.0 / 362880.0 * sharpness - 1.0 / 40320.0) * sharpness + 1.0 / 5040.0) * sharpness - 1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
 	}
 }
 
@@ -142,7 +142,7 @@ float HSGCosineProductIntegralOverPi(const SGLobe sg1, const float3 normal)
 	const float integral0 = (32.7080 * 2.0) * HSGIntegralOverTwoPi(lobe.sharpness, dot(lobe.axis, normal)) * exp(sg1.logCoefficient + lobe.logCoefficient);
 	const float integral1 = (31.7003 * 2.0) * HSGIntegralOverTwoPi(sg1.sharpness, dot(sg1.axis, normal)) * exp(sg1.logCoefficient);
 
-	return integral0 - integral1;
+	return max(integral0 - integral1, 0.0);
 }
 
 // Approximate product integral of an SG and clamped cosine.
