@@ -35,7 +35,7 @@ float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, con
 // Exact solution of an SG integral.
 float SGIntegral(const float sharpness)
 {
-	if (sharpness > 0.125)
+	if (sharpness > 0.25)
 	{
 		return 2.0 * M_PI * (1.0 - exp(-2.0 * sharpness)) / sharpness;
 	}
@@ -43,7 +43,7 @@ float SGIntegral(const float sharpness)
 	{
 		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using Taylor series.
 		// This approximation error is smaller than the numerical error of the exact form.
-		return 2.0 * M_PI * ((((((-4.0 / 45.0) * sharpness + 4.0 / 15.0) * sharpness - 2.0 / 3.0) * sharpness + 4.0 / 3.0) * sharpness - 2.0) * sharpness + 2.0);
+		return 4.0 * M_PI * ((((((((2.0 / 2835.0 * sharpness - 1.0 / 315.0) * sharpness + 4.0 / 315.0) * sharpness - 2.0 / 45.0) * sharpness + 2.0 / 15.0) * sharpness - 1.0 / 3.0) * sharpness + 2.0 / 3.0) * sharpness - 1.0) * sharpness + 1.0);
 	}
 }
 
