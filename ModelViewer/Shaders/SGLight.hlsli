@@ -4,8 +4,8 @@
 struct SGLight
 {
 	float3 position;
-	float  varianceInv;
-	float3 coefficient;
+	float  variance;
+	float3 intensity;
 	float  sharpness;
 	float3 axis;
 	uint   pad;

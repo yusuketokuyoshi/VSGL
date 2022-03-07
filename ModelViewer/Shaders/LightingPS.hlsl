@@ -58,9 +58,17 @@ float3 SGLighting(const float3 viewDir, const float3 position, const float3 norm
 		const float squaredDistance = dot(lightVec, lightVec);
 		const float3 lightDir = lightVec * rsqrt(squaredDistance);
 
+		// Clamp the variance for the numerical stability.
+		const float VARIANCE_THRESHOLD = 0x1.0p-31;
+		const float variance = max(sgLight.variance, VARIANCE_THRESHOLD * squaredDistance);
+
+		// Compute the maximum emissive radiance of the SG light.
+		// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by sgLight.intensity.
+		// This value can be precomputed in the SG light generation if we don't clamp the variance.
+		const float3 emissive = sgLight.intensity / variance;
+
 		// Compute SG sharpness for a light distribution viewed from the shading point.
-		const float SHARPNESS_MAX = 0x1.0p+28; // We clamp the SG sharpness with SHARPNESS_MAX for the numerical stability.
-		const float lightSharpness = min(squaredDistance * sgLight.varianceInv, SHARPNESS_MAX);
+		const float lightSharpness = squaredDistance / variance;
 
 		// Light lobe given by the product of the light distribution viewed from the shading point and the directional distribution of the SG light.
 		const SGLobe lightLobe = SGProduct(sgLight.axis, sgLight.sharpness, lightDir, lightSharpness);
@@ -84,7 +92,7 @@ float3 SGLighting(const float3 viewDir, const float3 position, const float3 norm
 		const float3 specularIllumination = specular * (coefficient * ASGProductIntegral(specularLobe, lightLobe));
 
 		// Finally, we multiply the common SG-light coefficient.
-		result += sgLight.coefficient * (diffuseIllumination + specularIllumination);
+		result += emissive * (diffuseIllumination + specularIllumination);
 	}
 
 	return result;
