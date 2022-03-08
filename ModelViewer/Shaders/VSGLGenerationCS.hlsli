@@ -100,7 +100,7 @@ SGLight GenerateVSGL(const float4 positionAvg, const float3 axisAvg, const float
 
 	// Approximate the distribution of VPL positions with a Gaussian.
 	// Since we assume that the VPLs are distributed on a 2D plane, we divide the total variance by two.
-	const float variance = max((positionAvg.w - dot(positionAvg.xyz, positionAvg.xyz)) / 2.0, 0.0);
+	const float variance = (positionAvg.w - dot(positionAvg.xyz, positionAvg.xyz)) / 2.0;
 
 	// Normalization of the 2D Gaussian distribution and SG.
 	const float3 intensity = power * g_photonPower / (2.0 * M_PI * SGIntegral(sharpness)); // Will be divided by variance at the shading pass in our implementation.
