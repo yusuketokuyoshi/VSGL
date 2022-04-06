@@ -1,6 +1,7 @@
 #ifndef SPHERICAL_GAUSSIAN_HLSLI
 #define SPHERICAL_GAUSSIAN_HLSLI
 
+#include "Math.hlsli"
 #include "NumericLimits.hlsli"
 #include "MathConstants.hlsli"
 
@@ -13,20 +14,6 @@ struct SGLobe
 	float  logCoefficient;
 };
 
-float expm1(const float x)
-{
-	if (abs(x) > 0.5)
-	{
-		return exp(x) - 1.0;
-	}
-	else
-	{
-		// To improve the numerical stability for a small x, we approximate exp(x) - 1 using Taylor series.
-		// This approximation error is smaller than the numerical error of the exact form.
-		return ((((((((1.0 / 362880.0 * x + 1.0 / 40320.0) * x + 1.0 / 5040.0) * x + 1.0 / 720.0) * x + 1.0 / 120.0) * x + 1.0 / 24.0) * x + 1.0 / 6.0) * x + 1.0 / 2.0) * x + 1.0) * x;
-	}
-}
-
 float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, const float logCoefficient = 0.0)
 {
 	return exp(logCoefficient + sharpness * (dot(dir, axis) - 1.0));
@@ -35,16 +22,7 @@ float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, con
 // Exact solution of an SG integral.
 float SGIntegral(const float sharpness)
 {
-	if (sharpness > 0.25)
-	{
-		return 2.0 * M_PI * (1.0 - exp(-2.0 * sharpness)) / sharpness;
-	}
-	else
-	{
-		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-2*sharpness))/sharpness using Taylor series.
-		// This approximation error is smaller than the numerical error of the exact form.
-		return 4.0 * M_PI * ((((((((2.0 / 2835.0 * sharpness - 1.0 / 315.0) * sharpness + 4.0 / 315.0) * sharpness - 2.0 / 45.0) * sharpness + 2.0 / 15.0) * sharpness - 1.0 / 3.0) * sharpness + 2.0 / 3.0) * sharpness - 1.0) * sharpness + 1.0);
-	}
+	return 4.0 * M_PI * expm1_over_x(-2.0 * sharpness);
 }
 
 // Approximate solution for an SG integral.
@@ -114,18 +92,8 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 	// Lower hemispherical integral: 2pi*e*(1 - e)/sharpness.
 	// Since this function returns the integral divided by 2pi, 2pi is eliminated from the code.
 	const float e = exp(-sharpness);
-	const float w = lerp(e, 1.0, lerpFactor); // (1 - e)/sharpness will be multiplied later.
 
-	if (sharpness > 0.5)
-	{
-		return w * (1.0 - e) / sharpness;
-	}
-	else
-	{
-		// To improve the numerical stability for small sharpness, we approximate (1 - exp(-sharpness))/sharpness using Taylor series.
-		// This approximation error is smaller than the numerical error of the exact form.
-		return w * ((((((((1.0 / 362880.0 * sharpness - 1.0 / 40320.0) * sharpness + 1.0 / 5040.0) * sharpness - 1.0 / 720.0) * sharpness + 1.0 / 120.0) * sharpness - 1.0 / 24.0) * sharpness + 1.0 / 6.0) * sharpness - 1.0 / 2.0) * sharpness + 1.0);
-	}
+	return lerp(e, 1.0, lerpFactor) * expm1_over_x(-sharpness);
 }
 
 // Approximate hemispherical integral of an SG.

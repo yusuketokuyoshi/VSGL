@@ -43,6 +43,9 @@
     <None Include="Shaders\NormalMapUtility.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
+    <None Include="Shaders\Math.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyRenderer.cpp">

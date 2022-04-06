@@ -74,6 +74,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Shaders\AnisotropicSphericalGaussian.hlsli" />
+    <None Include="Shaders\Math.hlsli" />
     <None Include="Shaders\MathConstants.hlsli" />
     <None Include="Shaders\NormalizedDeviceCoordinate.hlsli" />
     <None Include="Shaders\NormalMapUtility.hlsli" />
