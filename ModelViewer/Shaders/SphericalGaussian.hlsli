@@ -11,12 +11,12 @@ struct SGLobe
 {
 	float3 axis;
 	float  sharpness;
-	float  logCoefficient;
+	float  logAmplitude;
 };
 
-float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, const float logCoefficient = 0.0)
+float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, const float logAmplitude = 0.0)
 {
-	return exp(logCoefficient + sharpness * (dot(dir, axis) - 1.0));
+	return exp(logAmplitude + sharpness * (dot(dir, axis) - 1.0));
 }
 
 // Exact solution of an SG integral.
@@ -33,19 +33,19 @@ float SGApproxIntegral(const float sharpness)
 	return 2.0 * M_PI / sharpness;
 }
 
-// Product of two SGs which is closed in SG basis
+// Product of two SGs.
 SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2, const float sharpness2)
 {
 	const float3 axis = axis1 * sharpness1 + axis2 * sharpness2;
 	const float sharpness = length(axis);
 
-	// Compute logCoefficient = sharpness - sharpness1 - sharpness2 in a numerically stable form.
+	// Compute logAmplitude = sharpness - sharpness1 - sharpness2 using a numerically stable form.
 	const float cosine = clamp(dot(axis1, axis2), -1.0, 1.0);
 	const float sharpnessMin = min(sharpness1, sharpness2);
 	const float sharpnessRatio = sharpnessMin / max(sharpness1, sharpness2);
-	const float logCoefficient = 2.0 * sharpnessMin * (cosine - 1.0) / (sqrt(2.0 * sharpnessRatio * cosine + sharpnessRatio * sharpnessRatio + 1.0) + sharpnessRatio + 1.0);
+	const float logAmplitude = 2.0 * sharpnessMin * (cosine - 1.0) / (sqrt(2.0 * sharpnessRatio * cosine + sharpnessRatio * sharpnessRatio + 1.0) + sharpnessRatio + 1.0);
 
-	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logCoefficient };
+	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logAmplitude };
 
 	return result;
 }
@@ -56,7 +56,7 @@ float SGProductIntegral(const SGLobe sg1, const SGLobe sg2)
 {
 	const SGLobe lobe = SGProduct(sg1.axis, sg1.sharpness, sg2.axis, sg2.sharpness);
 
-	return exp(sg1.logCoefficient + sg2.logCoefficient + lobe.logCoefficient) * SGIntegral(lobe.sharpness);
+	return exp(sg1.logAmplitude + sg2.logAmplitude + lobe.logAmplitude) * SGIntegral(lobe.sharpness);
 }
 
 // Approximate product integral / pi.
@@ -66,7 +66,7 @@ float SGApproxProductIntegralOverPi(const SGLobe sg1, const SGLobe sg2)
 	const float sharpnessSum = sg1.sharpness + sg2.sharpness;
 	const float sharpness = sg1.sharpness * sg2.sharpness / sharpnessSum;
 
-	return 2.0 * SGEvaluate(sg1.axis, sg2.axis, sharpness, sg1.logCoefficient + sg2.logCoefficient) / sharpnessSum;
+	return 2.0 * SGEvaluate(sg1.axis, sg2.axis, sharpness, sg1.logAmplitude + sg2.logAmplitude) / sharpnessSum;
 }
 
 // Approximate product integral.
@@ -78,14 +78,16 @@ float SGApproxProductIntegral(const SGLobe sg1, const SGLobe sg2)
 // Approximate hemispherical integral of an SG / 2pi.
 // The parameter "cosine" is the cosine of the angle between the SG axis and pole axis of the hemisphere.
 // [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"]
-float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
+float HSGIntegralOverTwoPi(const float cosine, const float sharpness)
 {
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// First we compute the interpolation factor.
-	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents for the numerical stability.
-	const float t = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
-	const float u = t * clamp(cosine, -1.0, 1.0);
-	const float lerpFactor = saturate(expm1(t + u) / (expm1(t) * (1.0 + exp(u))));
+	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents to avoid the overflow.
+	const float steepness = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
+	const float u = steepness * clamp(cosine, -1.0, 1.0);
+
+	// We use expm1 for the numerical stability.
+	const float lerpFactor = saturate(expm1(steepness + u) / (expm1(steepness) * (1.0 + exp(u))));
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
@@ -97,41 +99,44 @@ float HSGIntegralOverTwoPi(const float sharpness, const float cosine)
 }
 
 // Approximate hemispherical integral of an SG.
-float HSGIntegral(const float sharpness, const float cosine)
+float HSGIntegral(const float cosine, const float sharpness)
 {
-	return 2.0 * M_PI * HSGIntegralOverTwoPi(sharpness, cosine);
+	return 2.0 * M_PI * HSGIntegralOverTwoPi(cosine, sharpness);
 }
 
 // Approximate product integral of an SG and clamped cosine / pi.
 // [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"]
-float HSGCosineProductIntegralOverPi(const SGLobe sg1, const float3 normal)
+float HSGCosineProductIntegralOverPi(const SGLobe sg, const float3 normal)
 {
-	const SGLobe lobe = SGProduct(sg1.axis, sg1.sharpness, normal, 0.0315);
-	const float integral0 = (32.7080 * 2.0) * HSGIntegralOverTwoPi(lobe.sharpness, dot(lobe.axis, normal)) * exp(sg1.logCoefficient + lobe.logCoefficient);
-	const float integral1 = (31.7003 * 2.0) * HSGIntegralOverTwoPi(sg1.sharpness, dot(sg1.axis, normal)) * exp(sg1.logCoefficient);
+	const float LAMBDA = 0.0315;
+	const float MU = 32.7080;
+	const float ALPHA = 31.7003;
+	const SGLobe prodLobe = SGProduct(sg.axis, sg.sharpness, normal, LAMBDA);
+	const float integral0 = HSGIntegralOverTwoPi(dot(prodLobe.axis, normal), prodLobe.sharpness) * exp(prodLobe.logAmplitude);
+	const float integral1 = HSGIntegralOverTwoPi(dot(sg.axis, normal), sg.sharpness);
 
-	return max(integral0 - integral1, 0.0);
+	return exp(sg.logAmplitude) * max((2.0 * MU) * integral0 - (2.0 * ALPHA) * integral1, 0.0);
 }
 
 // Approximate product integral of an SG and clamped cosine.
-float HSGCosineProductIntegral(const SGLobe sg1, const float3 normal)
+float HSGCosineProductIntegral(const SGLobe sg, const float3 normal)
 {
-	return M_PI * HSGCosineProductIntegralOverPi(sg1, normal);
+	return M_PI * HSGCosineProductIntegralOverPi(sg, normal);
 }
 
 // Approximate the reflection lobe with an SG lobe for microfacet BRDFs.
 // [Wang et al. 2009 "All-Frequency Rendering with Dynamic, Spatially-Varying Reflectance"]
-SGLobe SGReflectionLobe(const float3 direction, const float3 normal, const float squaredRoughness)
+SGLobe SGReflectionLobe(const float3 dir, const float3 normal, const float squaredRoughness)
 {
 	// Compute SG sharpness for the NDF.
 	// Unlike Wang et al. [2009], we use the following equation based on the Appendix of [Tokuyoshi and Harada 2019 "Hierarchical Russian Roulette for Vertex Connections"].
 	const float sharpnessNDF = 2.0 / squaredRoughness - 2.0;
 
 	// Approximate the reflection lobe axis using the peak of the NDF (i.e., the perfectly specular reflection direction).
-	const float3 axis = reflect(-direction, normal);
+	const float3 axis = reflect(-dir, normal);
 
 	// Jacobian of the transformation from halfvectors to reflection vectors.
-	const float jacobian = 4.0 * abs(dot(direction, normal));
+	const float jacobian = 4.0 * abs(dot(dir, normal));
 
 	// Compute sharpness for the reflection lobe.
 	const float sharpness = sharpnessNDF / jacobian;

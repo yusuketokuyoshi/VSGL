@@ -100,13 +100,13 @@ void MyRenderer::Initialize()
     s_depthRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
     s_depthRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::CUTOUT_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
     s_depthRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-    s_depthRootSig.Finalize(L"s_depthRootSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    s_depthRootSig.Finalize(L"s_depthRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     s_rsmRootSig.Reset(2, 1);
     s_rsmRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
     s_rsmRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::MODEL_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
     s_rsmRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-    s_rsmRootSig.Finalize(L"s_rsmRootSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    s_rsmRootSig.Finalize(L"s_rsmRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     s_lightingRootSig.Reset(5, 2);
     s_lightingRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -116,14 +116,14 @@ void MyRenderer::Initialize()
     s_lightingRootSig[ROOT_INDEX_PS_CBV1].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_PIXEL);
     s_lightingRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
     s_lightingRootSig.InitStaticSampler(1, shadowSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-    s_lightingRootSig.Finalize(L"s_lightingRootSignature", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    s_lightingRootSig.Finalize(L"s_lightingRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     s_vsglRootSig.Reset(4);
     s_vsglRootSig[VSGL_ROOT_INDEX_CBV].InitAsConstantBuffer(0);
     s_vsglRootSig[VSGL_ROOT_INDEX_CONSTANTS].InitAsConstants(1, 1);
     s_vsglRootSig[VSGL_ROOT_INDEX_SRV].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
     s_vsglRootSig[VSGL_ROOT_INDEX_UAV].InitAsBufferUAV(0);
-    s_vsglRootSig.Finalize(L"s_vsglRootSignature");
+    s_vsglRootSig.Finalize(L"s_vsglRootSig");
 
     s_vsglGenerationDiffusePSO.SetRootSignature(s_vsglRootSig);
     s_vsglGenerationDiffusePSO.SetComputeShader(g_pVSGLGenerationDiffuseCS, sizeof(g_pVSGLGenerationDiffuseCS));
