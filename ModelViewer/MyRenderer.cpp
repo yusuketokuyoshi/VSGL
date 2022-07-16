@@ -18,14 +18,9 @@
 #include "CompiledShaders/LightingVS.h"
 #include "CompiledShaders/LightingPS.h"
 #include "CompiledShaders/LightingCutoutPS.h"
-#include "CompiledShaders/LightingHSGPS.h"
-#include "CompiledShaders/LightingHSGCutoutPS.h"
 
 namespace MyRenderer
 {
-    // Apply a hemispherical convolution for diffuse surfaces to alleviate light leaks.
-    BoolVar EnableHSGConvolution("VSGL/Hemispherical Convolution", false);
-
     enum GFX_ROOT_INDEX {
         ROOT_INDEX_VS_CBV,
         ROOT_INDEX_PS_SRV0,
@@ -236,28 +231,6 @@ void MyRenderer::Initialize()
         s_lightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
         s_lightingCutoutPSO.SetPixelShader(g_pLightingCutoutPS, sizeof(g_pLightingCutoutPS));
         s_lightingCutoutPSO.Finalize();
-
-        s_lightingHSGPSO.SetRootSignature(s_lightingRootSig);
-        s_lightingHSGPSO.SetRasterizerState(Graphics::RasterizerDefault);
-        s_lightingHSGPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
-        s_lightingHSGPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-        s_lightingHSGPSO.SetBlendState(Graphics::BlendDisable);
-        s_lightingHSGPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-        s_lightingHSGPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-        s_lightingHSGPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-        s_lightingHSGPSO.SetPixelShader(g_pLightingHSGPS, sizeof(g_pLightingHSGPS));
-        s_lightingHSGPSO.Finalize();
-
-        s_lightingHSGCutoutPSO.SetRootSignature(s_lightingRootSig);
-        s_lightingHSGCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-        s_lightingHSGCutoutPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
-        s_lightingHSGCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-        s_lightingHSGCutoutPSO.SetBlendState(Graphics::BlendDisable);
-        s_lightingHSGCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-        s_lightingHSGCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-        s_lightingHSGCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-        s_lightingHSGCutoutPSO.SetPixelShader(g_pLightingHSGCutoutPS, sizeof(g_pLightingHSGCutoutPS));
-        s_lightingHSGCutoutPSO.Finalize();
     }
 }
 
@@ -405,12 +378,12 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
     context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
     context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
     context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-    context.SetPipelineState(EnableHSGConvolution ? s_lightingHSGPSO : s_lightingPSO);
+    context.SetPipelineState(s_lightingPSO);
     Draw(context, scene.m_model);
 
     if (scene.m_modelCutout.m_Header.meshCount > 0)
     {
-        context.SetPipelineState(EnableHSGConvolution ? s_lightingHSGCutoutPSO : s_lightingCutoutPSO);
+        context.SetPipelineState(s_lightingCutoutPSO);
         Draw(context, scene.m_modelCutout);
     }
 }

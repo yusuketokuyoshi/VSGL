@@ -97,12 +97,6 @@
     <FxCompile Include="Shaders\LightingPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\LightingHSGPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\LightingHSGCutoutPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\LightingCutoutPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

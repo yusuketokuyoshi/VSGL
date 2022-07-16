@@ -153,7 +153,7 @@ void main(const uint2 threadID : SV_DispatchThreadID, const uint groupIndex : SV
 			// For the diffuse lobe, we approximate the PDF = cosine/pi into a normalized SG (a.k.a. vMF distribution) whose axis is the surface normal.
 			// Then, we convert the vMF into an average of directions [Banerjee et al. 2005].
 			const float3 axis = normal;
-			const float axisLength = 0.5293165801288393926136314; // Equivalent to VMFSharpnessToAxisLength(SG_CUT_COSINE_SHARPNESS).
+			const float axisLength = 0.5; // Average axis length for the cut cosine.
 			const float3 power = diffuse * jacobian;
 #elif defined(SPECULAR_VSGL)
 			const float4 specular = specularBuffer[texelID];

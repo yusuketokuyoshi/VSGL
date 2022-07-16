@@ -44,7 +44,6 @@ struct Input
 // [Tokuyoshi 2015 "Virtual Spherical Gaussian Lights for Real-Time Glossy Indirect Illumination"]
 float3 SGLighting(const float3 viewDir, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float squaredRoughness)
 {
-	const SGLobe diffuseLobe = { normal, SG_CUT_COSINE_SHARPNESS, 0.0 };
 	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, squaredRoughness);
 	const float3 specularVec = specularLobe.z * ASGSharpnessToSGSharpness(specularLobe.sharpness);
 	float3 result = 0.0;
@@ -75,11 +74,12 @@ float3 SGLighting(const float3 viewDir, const float3 position, const float3 norm
 
 		// Diffuse lighting: the product integral of the diffuse lobe and light lobe.
 		// The coefficient of the diffuse lobe is the BRDF i.e. diffuse/pi for the Lambert model.
-#if defined(HSG_CONVOLUTION)
-		// Product integral of an SG and clamped cosine alleviates light leaks, though it is more expensive than the product integral of two SGs.
+#if 1
 		const float3 diffuseIllumination = diffuse * HSGCosineProductIntegralOverPi(lightLobe, normal);
 #else
 		// Fast approximation using a product integral of two SG lobes.
+		// This approach can produce light leaks.
+		const SGLobe diffuseLobe = { normal, SG_CUT_COSINE_SHARPNESS, 0.0 };
 		const float3 diffuseIllumination = diffuse * SGApproxProductIntegralOverPi(lightLobe, diffuseLobe);
 #endif
 		// Specular lighting: the product integral of the specular lobe and light lobe.

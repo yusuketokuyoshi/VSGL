@@ -1,10 +1,7 @@
 #ifndef OCTAHEDRAL_MAPPING_HLSLI
 #define OCTAHEDRAL_MAPPING_HLSLI
 
-float2 mulsign(const float2 x, const float2 y)
-{
-	return asfloat((asuint(y) & 0x80000000) ^ asuint(x));
-}
+#include "Math.hlsli"
 
 float2 EncodeOct(const float3 dir)
 {

@@ -77,17 +77,22 @@ float SGApproxProductIntegral(const SGLobe sg1, const SGLobe sg2)
 
 // Approximate hemispherical integral of an SG / 2pi.
 // The parameter "cosine" is the cosine of the angle between the SG axis and pole axis of the hemisphere.
-// [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"]
+// [Tokuyoshi 2022 "Accurate Diffuse Lighting from Spherical Gaussian Lights"]
 float HSGIntegralOverTwoPi(const float cosine, const float sharpness)
 {
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
-	// First we compute the interpolation factor.
-	// Unlike the paper, we use reciprocals of exponential functions obtained by negative exponents to avoid the overflow.
-	const float steepness = sqrt(sharpness) * sharpness * (-1.6988 * sharpness - 10.8438) / ((sharpness + 6.2201) * sharpness + 10.2415);
-	const float u = steepness * clamp(cosine, -1.0, 1.0);
+	// First we compute the sigmoid-form interpolation factor.
+	// Instead of a logistic approximation [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"],
+	// we approxiamte the interpolation factor using the CDF of a Gaussian (i.e. normalized error function).
 
-	// We use expm1 for the numerical stability.
-	const float lerpFactor = saturate(expm1(steepness + u) / (expm1(steepness) * (1.0 + exp(u))));
+	// Our fitted steepness for the CDF.
+	const float A = 0.6517328826907056171791055021459;
+	const float B = 1.3418280033141287699294252888649;
+	const float C = 7.2216687798956709087860872386955;
+	const float steepness = sharpness * sqrt((0.5 * sharpness + A) / ((sharpness + B) * sharpness + C));
+
+	// Our approximation for the normalized hemispherical integral.
+	const float lerpFactor = 0.5 + 0.5 * (erf(steepness * clamp(cosine, -1.0, 1.0)) / erf(steepness));
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
@@ -105,17 +110,16 @@ float HSGIntegral(const float cosine, const float sharpness)
 }
 
 // Approximate product integral of an SG and clamped cosine / pi.
-// [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"]
+// [Tokuyoshi 2022 "Accurate Diffuse Lighting from Spherical Gaussian Lights"]
 float HSGCosineProductIntegralOverPi(const SGLobe sg, const float3 normal)
 {
-	const float LAMBDA = 0.0315;
-	const float MU = 32.7080;
-	const float ALPHA = 31.7003;
+	const float LAMBDA = 0.00084560872241480124;
+	const float ALPHA = 1182.2467339678153;
 	const SGLobe prodLobe = SGProduct(sg.axis, sg.sharpness, normal, LAMBDA);
-	const float integral0 = HSGIntegralOverTwoPi(dot(prodLobe.axis, normal), prodLobe.sharpness) * exp(prodLobe.logAmplitude);
+	const float integral0 = HSGIntegralOverTwoPi(dot(prodLobe.axis, normal), prodLobe.sharpness) * exp(prodLobe.logAmplitude + LAMBDA);
 	const float integral1 = HSGIntegralOverTwoPi(dot(sg.axis, normal), sg.sharpness);
 
-	return exp(sg.logAmplitude) * max((2.0 * MU) * integral0 - (2.0 * ALPHA) * integral1, 0.0);
+	return exp(sg.logAmplitude) * max(2.0 * ALPHA * (integral0 - integral1), 0.0);
 }
 
 // Approximate product integral of an SG and clamped cosine.
