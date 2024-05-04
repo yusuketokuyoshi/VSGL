@@ -118,6 +118,8 @@ void DepthBuffer::CreateDerivedViews( ID3D12Device* Device, DXGI_FORMAT Format )
             m_hStencilSRV = Graphics::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         SRVDesc.Format = stencilReadFormat;
+        SRVDesc.Texture2D.PlaneSlice = 1;
+
         Device->CreateShaderResourceView( Resource, &SRVDesc, m_hStencilSRV );
     }
 }
