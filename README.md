@@ -25,7 +25,7 @@ It roughly approximates virtual point lights (VPLs) with two *[virtual spherical
 ## Requirements
 
  - Windows 10 version 2004
- - [Visual Studio 2019](https://visualstudio.com/) with [Windows 10 SDK version 2004](https://developer.microsoft.com/en-US/windows/downloads/windows-10-sdk/)
+ - [Visual Studio 2019](https://visualstudio.com/) with [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
 
 ## Getting Started
 

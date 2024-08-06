@@ -63,7 +63,9 @@ void ThreadGroupSum(const uint groupIndex, const float4 position, const float3 a
 	GroupMemoryBarrierWithGroupSync();
 
 	// Middle-level reduction. Summation using the group shared memory.
-	for (uint i = (THREAD_GROUP_SIZE / 2) / laneCount; i > laneCount; i >>= 1)
+	uint i = (THREAD_GROUP_SIZE / 2) / laneCount;
+
+	for (; i > laneCount; i >>= 1)
 	{
 		if (groupIndex < i)
 		{
