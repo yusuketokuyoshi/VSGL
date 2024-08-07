@@ -55,8 +55,6 @@ namespace MyRenderer
     static GraphicsPSO s_reflectiveShadowMapCutoutPSO = { L"s_reflectiveShadowMapCutoutPSO" };
     static GraphicsPSO s_lightingPSO = { L"s_lightingPSO" };
     static GraphicsPSO s_lightingCutoutPSO = { L"s_lightingCutoutPSO" };
-    static GraphicsPSO s_lightingHSGPSO = { L"s_lightingHSGPSO" };
-    static GraphicsPSO s_lightingHSGCutoutPSO = { L"s_lightingHSGCutoutPSO" };
     static ComputePSO s_vsglGenerationDiffusePSO = { L"s_vsglGenerationDiffusePSO" };
     static ComputePSO s_vsglGenerationSpecularPSO = { L"s_vsglGenerationSpecularPSO" };
 
