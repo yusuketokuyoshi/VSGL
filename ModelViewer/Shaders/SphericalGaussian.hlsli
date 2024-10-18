@@ -5,8 +5,6 @@
 #include "NumericLimits.hlsli"
 #include "MathConstants.hlsli"
 
-static const float SG_CUT_COSINE_SHARPNESS = 2.0;
-
 struct SGLobe
 {
 	float3 axis;

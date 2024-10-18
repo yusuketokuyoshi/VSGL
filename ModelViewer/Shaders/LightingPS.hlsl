@@ -74,14 +74,8 @@ float3 SGLighting(const float3 viewDir, const float3 position, const float3 norm
 
 		// Diffuse lighting: the product integral of the diffuse lobe and light lobe.
 		// The coefficient of the diffuse lobe is the BRDF i.e. diffuse/pi for the Lambert model.
-#if 1
 		const float3 diffuseIllumination = diffuse * HSGCosineProductIntegralOverPi(lightLobe, normal);
-#else
-		// Fast approximation using a product integral of two SG lobes.
-		// This approach can produce light leaks.
-		const SGLobe diffuseLobe = { normal, SG_CUT_COSINE_SHARPNESS, 0.0 };
-		const float3 diffuseIllumination = diffuse * SGApproxProductIntegralOverPi(lightLobe, diffuseLobe);
-#endif
+
 		// Specular lighting: the product integral of the specular lobe and light lobe.
 		// Since we approximate an unnormalized NDF (whose peak = 1) into a specular ASG lobe, the coefficient of the specular ASG lobe is given as follows:
 		// coefficient = BRDF*cosine/(unnormalized NDF).
