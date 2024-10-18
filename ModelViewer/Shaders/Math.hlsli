@@ -90,4 +90,12 @@ float erf(const float x)
 	return (((((A6 * x2 + A5) * x2 + A4) * x2 + A3) * x2 + A2) * x2 + A1) * x;
 }
 
+// Complementary error function erfc(x) = 1 - erf(x).
+// This implementation can have a numerical error for large x.
+// TODO: Precise implementation.
+float erfc(const float x)
+{
+	return 1.0 - erf(x);
+}
+
 #endif

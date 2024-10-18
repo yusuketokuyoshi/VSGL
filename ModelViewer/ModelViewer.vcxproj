@@ -74,6 +74,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Shaders\AnisotropicSphericalGaussian.hlsli" />
+    <None Include="Shaders\GGX.hlsli" />
     <None Include="Shaders\Math.hlsli" />
     <None Include="Shaders\MathConstants.hlsli" />
     <None Include="Shaders\NormalizedDeviceCoordinate.hlsli" />
@@ -114,6 +115,16 @@
     <FxCompile Include="Shaders\LightingPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\PreviousLightingCutoutPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\PreviousLightingPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="Shaders\LightingVS.hlsl">

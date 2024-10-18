@@ -46,6 +46,9 @@
     <None Include="Shaders\Math.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
+    <None Include="Shaders\GGX.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyRenderer.cpp">
@@ -98,6 +101,12 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\LightingCutoutPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PreviousLightingCutoutPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PreviousLightingPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

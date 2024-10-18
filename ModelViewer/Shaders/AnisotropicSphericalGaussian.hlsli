@@ -49,11 +49,11 @@ float ASGProductIntegral(const ASGLobe asg, const SGLobe sg)
 // Approximate the reflection lobe with an ASG lobe for microfacet BRDFs.
 // This implementation is specialized for isotropic NDFs.
 // For a general form for anisotropic NDFs, please see [Xu et al. 2012 "Anisotropic Spherical Gaussians"].
-ASGLobe ASGReflectionLobe(const float3 dir, const float3 normal, const float squaredRoughness)
+ASGLobe ASGReflectionLobe(const float3 dir, const float3 normal, const float roughness2)
 {
 	// Compute ASG sharpness for the NDF.
 	// Unlike Xu et al. [2012], we use the following equation based on the Appendix of [Tokuyoshi and Harada 2019 "Hierarchical Russian Roulette for Vertex Connections"].
-	const float sharpnessNDF = 1.0 / squaredRoughness - 1.0;
+	const float sharpnessNDF = 1.0 / roughness2 - 1.0;
 
 	// Compute a 2x2 Jacobian matrix for the transformation from halfvectors to reflection vectors.
 	// Since this matrix is diagonal at the perfect reflection vector, we use only diagonal entries.

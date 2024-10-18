@@ -18,9 +18,13 @@
 #include "CompiledShaders/LightingVS.h"
 #include "CompiledShaders/LightingPS.h"
 #include "CompiledShaders/LightingCutoutPS.h"
+#include "CompiledShaders/PreviousLightingPS.h"
+#include "CompiledShaders/PreviousLightingCutoutPS.h"
 
 namespace MyRenderer
 {
+    BoolVar s_previousSGLighting("SG lighting/Previous method", false);
+
     enum GFX_ROOT_INDEX {
         ROOT_INDEX_VS_CBV,
         ROOT_INDEX_PS_SRV0,
@@ -55,6 +59,8 @@ namespace MyRenderer
     static GraphicsPSO s_reflectiveShadowMapCutoutPSO = { L"s_reflectiveShadowMapCutoutPSO" };
     static GraphicsPSO s_lightingPSO = { L"s_lightingPSO" };
     static GraphicsPSO s_lightingCutoutPSO = { L"s_lightingCutoutPSO" };
+    static GraphicsPSO s_previousLightingPSO = { L"s_previousLightingPSO" };
+    static GraphicsPSO s_previousLightingCutoutPSO = { L"s_previousLightingCutoutPSO" };
     static ComputePSO s_vsglGenerationDiffusePSO = { L"s_vsglGenerationDiffusePSO" };
     static ComputePSO s_vsglGenerationSpecularPSO = { L"s_vsglGenerationSpecularPSO" };
 
@@ -229,6 +235,28 @@ void MyRenderer::Initialize()
         s_lightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
         s_lightingCutoutPSO.SetPixelShader(g_pLightingCutoutPS, sizeof(g_pLightingCutoutPS));
         s_lightingCutoutPSO.Finalize();
+
+        s_previousLightingPSO.SetRootSignature(s_lightingRootSig);
+        s_previousLightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
+        s_previousLightingPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_previousLightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+        s_previousLightingPSO.SetBlendState(Graphics::BlendDisable);
+        s_previousLightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+        s_previousLightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+        s_previousLightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+        s_previousLightingPSO.SetPixelShader(g_pPreviousLightingPS, sizeof(g_pPreviousLightingPS));
+        s_previousLightingPSO.Finalize();
+
+        s_previousLightingCutoutPSO.SetRootSignature(s_lightingRootSig);
+        s_previousLightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
+        s_previousLightingCutoutPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_previousLightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+        s_previousLightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
+        s_previousLightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+        s_previousLightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+        s_previousLightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+        s_previousLightingCutoutPSO.SetPixelShader(g_pPreviousLightingCutoutPS, sizeof(g_pPreviousLightingCutoutPS));
+        s_previousLightingCutoutPSO.Finalize();
     }
 }
 
@@ -376,7 +404,7 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
     context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
     context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
     context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-    context.SetPipelineState(s_lightingPSO);
+    context.SetPipelineState(s_previousSGLighting ? s_previousLightingPSO : s_lightingPSO);
     Draw(context, scene.m_model);
 
     if (scene.m_modelCutout.m_Header.meshCount > 0)
