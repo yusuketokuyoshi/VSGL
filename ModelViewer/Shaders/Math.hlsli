@@ -11,7 +11,7 @@ float2 mulsign(const float2 x, const float2 y)
 	return asfloat((asuint(y) & 0x80000000) ^ asuint(x));
 }
 
-// (exp(x) - 1)/x with cancellation of rounding errors.
+// exp(x) - 1 with cancellation of rounding errors.
 // [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p.19]
 float expm1(const float x)
 {
