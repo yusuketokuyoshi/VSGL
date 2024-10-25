@@ -46,6 +46,9 @@ struct Input
 // Compute lighting from spherical Gaussian (SG) light sources.
 // [Tokuyoshi 2015 "Fast Indirect Illumination Using Two Virtual Spherical Gaussian Lights"]
 // [Tokuyoshi 2015 "Virtual Spherical Gaussian Lights for Real-Time Glossy Indirect Illumination"]
+// The previous implementation (that can be enabled by "PREVIOUS_SG_LIGHTING") used ASGs [Xu et al. 2013].
+// The current implementation uses a new SG lighting method based on NDF filtering.
+// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"].
 float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float2 roughness)
 {
 #if defined(PREVIOUS_SG_LIGHTING)
@@ -60,7 +63,7 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 	const float3 viewDirTS = mul(tangentFrame, viewDir);
 	const float vlen = length(viewDirTS.xy);
 	const float2 v = (vlen != 0.0) ? (viewDirTS.xy / vlen) : float2(1.0, 0.0);
-	const float2x2 reflecJacobianMat = mul(float2x2(v.x, -v.y, v.y, v.x), float2x2(0.5, 0.0, 0.0, 0.5 / viewDirTS.z));
+	const float2x2 reflecJacobianMat = mul(float2x2(v.x, -v.y, v.y, v.x), float2x2(0.5, 0.0, 0.0, 0.5 / viewDirTS.z)); // Omit abs() unlike the paper since it doesn't affect JJ^T.
 
 	// Compute JJ^T matrix.
 	const float2x2 jjMat = mul(reflecJacobianMat, transpose(reflecJacobianMat));
