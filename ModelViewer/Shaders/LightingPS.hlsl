@@ -48,30 +48,36 @@ struct Input
 // [Tokuyoshi 2015 "Virtual Spherical Gaussian Lights for Real-Time Glossy Indirect Illumination"]
 // The previous implementation (that can be enabled by "PREVIOUS_SG_LIGHTING") used ASGs [Xu et al. 2013].
 // The current implementation uses a new SG lighting method based on NDF filtering.
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"].
+// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
 float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float2 roughness)
 {
 #if defined(PREVIOUS_SG_LIGHTING)
 	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, roughness.x * roughness.y);
 	const float3 reflecVec = specularLobe.z * ASGSharpnessToSGSharpness(specularLobe.sharpness);
 #else
-	// Convert the roughness from slope space to the orthographically projected space.
+	// Convert the roughness parameter from slope space to the orthographically projected space.
+	// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
 	const float2 roughness2 = roughness * roughness;
 	const float2 projRoughness2 = roughness2 / max(1.0 - roughness2, FLT_MIN);
 
-	// Compute the Jacobian J for the transformation between halfvetors and reflection vectors at halfvector = normal.
-	const float3 viewDirTS = mul(tangentFrame, viewDir);
-	const float vlen = length(viewDirTS.xy);
-	const float2 v = (vlen != 0.0) ? (viewDirTS.xy / vlen) : float2(1.0, 0.0);
-	const float2x2 reflecJacobianMat = mul(float2x2(v.x, -v.y, v.y, v.x), float2x2(0.5, 0.0, 0.0, 0.5 / viewDirTS.z)); // Omit abs() unlike the paper since it doesn't affect JJ^T.
+	// Compute the Jacobian matrix J for the transformation between halfvetors and reflection vectors at halfvector = normal.
+	// TODO: Investigate a more dominant halfvector for rough surfaces than the normal.
+	const float3 wi = mul(tangentFrame, viewDir);
+	const float vlen = length(wi.xy);
+	const float2 v = (vlen != 0.0) ? (wi.xy / vlen) : float2(1.0, 0.0);
+	const float2x2 jacobianMat = mul(float2x2(v.x, -v.y, v.y, v.x), float2x2(0.5, 0.0, 0.0, 0.5 / wi.z)); // Omit abs() unlike the paper since it doesn't affect JJ^T.
 
-	// Compute JJ^T matrix.
-	const float2x2 jjMat = mul(reflecJacobianMat, transpose(reflecJacobianMat));
-	const float detJJ4 = 1.0 / (4.0 * viewDirTS.z * viewDirTS.z); // = 4 * determiant(JJ^T).
+	// Compute JJ^T for NDF filtering.
+	const float2x2 jjMat = mul(jacobianMat, transpose(jacobianMat));
+
+	// Compute the determinant of JJ^T without catastrophic cancellation.
+	const float detJJ4 = 1.0 / (4.0 * wi.z * wi.z); // = 4 * determiant(JJ^T).
 
 	// Preprocess for the lobe visibility.
 	// Approximate the reflection lobe with an SG whose axis is the perfect specular reflection vector.
-	// We use a conservative sharpness to filter the visibility.
+	// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
+	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
+	// TODO: Investigate a more dominant reflection vector for rough surfaces than the perfect specular reflection vector.
 	const float roughnessMax2 = max(roughness2.x, roughness2.y);
 	const float reflecSharpness = (1.0 - roughnessMax2) / max(2.0f * roughnessMax2, FLT_MIN);
 	const float3 reflecVec = reflect(-viewDir, normal) * reflecSharpness;
@@ -131,7 +137,7 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		const float lightLobeVariance = 1.0 / lightLobe.sharpness;
 		const float2x2 filteredProjRoughnessMat = float2x2(projRoughness2.x, 0.0, 0.0, projRoughness2.y) + 2.0 * lightLobeVariance * jjMat;
 
-		// Compute determinant(filteredProjRoughnessMat) in a numerically stable manner.
+		// Compute the determinant of filteredProjRoughnessMat in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
 		const float det = projRoughness2.x * projRoughness2.y + 2.0 * lightLobeVariance * (projRoughness2.x * jjMat._11 + projRoughness2.y * jjMat._22) + lightLobeVariance * lightLobeVariance * detJJ4;
 
@@ -140,16 +146,16 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		const float tr = filteredProjRoughnessMat._11 + filteredProjRoughnessMat._22;
 		const float2x2 filteredRoughnessMat = select(isfinite(1.0 + tr + det), min(filteredProjRoughnessMat + float2x2(det, 0.0, 0.0, det), FLT_MAX) / (1.0 + tr + det), float2x2(min(filteredProjRoughnessMat._11, FLT_MAX) / min(filteredProjRoughnessMat._11 + 1.0, FLT_MAX), 0.0, 0.0, min(filteredProjRoughnessMat._22, FLT_MAX) / min(filteredProjRoughnessMat._22 + 1.0, FLT_MAX)));
 
-		// Evaluate the filtered distribution.
-		const float3 halfvecUnormalized = viewDirTS + mul(tangentFrame, lightLobe.axis);
+		// Evaluate the filtered reflection lobe.
+		const float3 halfvecUnormalized = wi + mul(tangentFrame, lightLobe.axis);
 		const float3 halfvec = halfvecUnormalized / max(length(halfvecUnormalized), FLT_MIN);
-		const float pdf = SGGXReflectionPDF(viewDirTS, halfvec, filteredRoughnessMat);
+		const float lobe = SGGXReflectionPDF(wi, halfvec, filteredRoughnessMat);
 
 		// Visibility of the SG light in the upper hemisphere.
 		const float visibility = VMFHemisphericalIntegral(dot(prodDir, normal), prodSharpness);
 
 		// Eq. 12 of the paper.
-		const float specularIllumination = amplitude * visibility * pdf * SGIntegral(lightLobe.sharpness);
+		const float specularIllumination = amplitude * visibility * lobe * SGIntegral(lightLobe.sharpness);
 #endif
 
 		// Finally, we multiply the common SG-light coefficient.
