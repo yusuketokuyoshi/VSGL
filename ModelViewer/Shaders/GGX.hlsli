@@ -29,7 +29,7 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 	return (m.z > 0.0) ? SGGX(m, roughnessMat) : 0.0;
 }
 
-// Reflection lobe based the symmetric GGX VNDF.
+// Reflection lobe based on the symmetric GGX VNDF.
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5.2]
 float SGGXReflectionPDF(const float3 wi, const float3 m, const float2x2 roughnessMat)
 {
