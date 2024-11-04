@@ -52,7 +52,7 @@ struct Input
 float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float2 roughness)
 {
 #if defined(PREVIOUS_SG_LIGHTING)
-	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, roughness.x * roughness.y);
+	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, roughness.x * roughness.y); // Assume roughness.x == roughness.y
 	const float3 reflecVec = specularLobe.z * ASGSharpnessToSGSharpness(specularLobe.sharpness);
 #else
 	// Convert the roughness parameter from slope space to the orthographically projected space.
@@ -177,22 +177,24 @@ float3 main(const Input input) : SV_Target
 	const float4 specular = specularMap.Sample(textureSampler, input.texcoord);
 	const float3 normalTS = DecodeNormalMap(normalMap.Sample(textureSampler, input.texcoord));
 	const float3 normal = mul(normalTS, baseTangentFrame);
+	const float3x3 tangentFrame = BuildTangentFrame(normal, input.tangent, input.bitangentSign);
 	const float3 viewDir = normalize(g_cameraPosition - input.wpos);
-	const float roughness = PerceptualRoughnessToAlpha(specular.w);
+	const float3 wi = mul(tangentFrame, viewDir);
+	const float2 roughness = PerceptualRoughnessToAlpha(specular.w);
 
 	// Direct illumination.
 	const float3 lightVec = g_lightPosition - input.wpos;
-	const float lightSquaredDistance = dot(lightVec, lightVec);
-	const float3 lightDir = lightVec * rsqrt(lightSquaredDistance);
+	const float lightDistance2 = dot(lightVec, lightVec);
+	const float3 lightDir = lightVec * rsqrt(lightDistance2);
+	const float3 wo = mul(tangentFrame, lightDir);
+	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(wi, wo, roughness); // Fresnel = 1 in this implementation.
 	const float3 shadowNDC = NDCTransform(input.wpos, g_lightViewProj);
 	const float2 shadowTexcoord = NDCToTexcoord(shadowNDC.xy);
 	const float visibility = shadowMap.SampleCmpLevelZero(shadowSampler, shadowTexcoord, saturate(shadowNDC.z));
-	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(viewDir, lightDir, normal, roughness * roughness); // Fresnel = 1 in this implementation.
-	const float3 directIllumination = brdf * g_lightIntensity * (visibility * saturate(dot(normal, lightDir)) / lightSquaredDistance);
+	const float3 directIllumination = brdf * (g_lightIntensity * visibility * saturate(wo.z) / lightDistance2);
 
 	// Indirect illumination using VSGLs.
-	const float3x3 shadingTangentFrame = BuildTangentFrame(normal, input.tangent, input.bitangentSign);
-	const float3 indirectIllumination = SGLighting(viewDir, shadingTangentFrame, input.wpos, normal, diffuse, specular.xyz, roughness);
+	const float3 indirectIllumination = SGLighting(viewDir, tangentFrame, input.wpos, normal, diffuse, specular.xyz, roughness);
 
 	return directIllumination + indirectIllumination;
 }

@@ -3,17 +3,15 @@
 
 #include "GGX.hlsli"
 
-// Microfacet BRDF using the isotropic GGX NDF with the Smith height-correlated masking-shadowing function.
-float SmithGGXBRDF(const float3 incomingDir, const float3 outgoingDir, const float3 normal, const float roughness2)
+// Microfacet BRDF using the axis-aligned anisotropic GGX NDF with the Smith height-correlated masking-shadowing function.
+float SmithGGXBRDF(const float3 wi, const float3 wo, const float2 roughness)
 {
-	const float3 halfvec = normalize(incomingDir + outgoingDir);
-	const float ndf = GGX(dot(normal, halfvec), roughness2);
-	const float zi = abs(dot(normal, incomingDir));
-	const float zo = abs(dot(normal, outgoingDir));
-	const float si = sqrt(roughness2 + (1.0 - roughness2) * (zi * zi));
-	const float so = sqrt(roughness2 + (1.0 - roughness2) * (zo * zo));
+	const float3 m = normalize(wi + wo);
+	const float ndf = GGX(m, roughness);
+	const float si = length(float3(wi.xy * roughness, wi.z));
+	const float so = length(float3(wo.xy * roughness, wo.z));
 
-	return min(ndf / (2.0 * (si * zo + so * zi)), FLT_MAX);
+	return min(ndf / (2.0 * (si * abs(wo.z) + so * abs(wi.z))), FLT_MAX);
 }
 
 // BRDF*dot(o,n)/PDF for VNDF importance sampling, where PDF = D/(4*(projected area)).

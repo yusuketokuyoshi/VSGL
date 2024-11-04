@@ -4,15 +4,16 @@
 #include "MathConstants.hlsli"
 #include "NumericLimits.hlsli"
 
-// Isotropic GGX.
-float GGX(const float z, const float roughness2)
+// Symmetric GGX using anisotropic alpha roughness.
+float SGGX(const float3 m, const float2 roughness)
 {
-	const float a = (roughness2 - 1.0) * (z * z) + 1.0;
+	const float3 stretched = float3(m.xy / roughness, m.z);
+	const float length2 = dot(stretched, stretched);
 
-	return (z > 0) ? roughness2 / (M_PI * (a * a)) : 0.0;
+	return 1.0 / (M_PI * (roughness.x * roughness.y) * (length2 * length2));
 }
 
-// Symmetry GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
+// Symmetric GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
 float SGGX(const float3 m, const float2x2 roughnessMat)
 {
 	const float det = max(determinant(roughnessMat), FLT_MIN); // TODO: Use Kahan's algorithm for precise determinant. [https://pharr.org/matt/blog/2019/11/03/difference-of-floats]
@@ -22,7 +23,13 @@ float SGGX(const float3 m, const float2x2 roughnessMat)
 	return 1.0 / (M_PI * sqrt(det) * (length2 * length2));
 }
 
-// Non-axis-aligned GGX.
+// Axis-aligned anisotropic GGX.
+float GGX(const float3 m, const float2 roughness)
+{
+	return (m.z > 0.0) ? SGGX(m, roughness) : 0.0;
+}
+
+// Non-axis-aligned anisotropic GGX.
 // [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 1]
 float GGX(const float3 m, const float2x2 roughnessMat)
 {
