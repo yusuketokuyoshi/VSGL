@@ -49,6 +49,9 @@
     <None Include="Shaders\GGX.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
+    <None Include="Shaders\NDFFiltering.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyRenderer.cpp">

@@ -1,5 +1,6 @@
 #include "NormalMapUtility.hlsli"
 #include "NormalizedDeviceCoordinate.hlsli"
+#include "NDFFiltering.hlsli"
 #include "SmithGGXBRDF.hlsli"
 #include "SGLight.hlsli"
 #if defined(PREVIOUS_SG_LIGHTING)
@@ -169,10 +170,11 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 float3 main(const Input input) : SV_Target
 {
 #if defined(ALPHA_CUTOUT)
-	const float3x3 baseTangentFrame = BuildTangentFrame(normalize(input.isFrontFace ? input.normal : -input.normal), input.tangent, input.bitangentSign);
+	const float3 baseNormal = normalize(input.isFrontFace ? input.normal : -input.normal);
 #else
-	const float3x3 baseTangentFrame = BuildTangentFrame(normalize(input.normal), input.tangent, input.bitangentSign);
+	const float3 baseNormal = normalize(input.normal);
 #endif
+	const float3x3 baseTangentFrame = BuildTangentFrame(baseNormal, input.tangent, input.bitangentSign);
 	const float3 diffuse = diffuseMap.Sample(textureSampler, input.texcoord);
 	const float4 specular = specularMap.Sample(textureSampler, input.texcoord);
 	const float3 normalTS = DecodeNormalMap(normalMap.Sample(textureSampler, input.texcoord));
@@ -182,19 +184,22 @@ float3 main(const Input input) : SV_Target
 	const float3 wi = mul(tangentFrame, viewDir);
 	const float2 roughness = PerceptualRoughnessToAlpha(specular.w);
 
+	// Geometric specular antialiasing with NDF filtering.
+	const float2 effectiveRoughness = IsotropicNDFFiltering(ddx(baseNormal), ddy(baseNormal), roughness);
+
 	// Direct illumination.
 	const float3 lightVec = g_lightPosition - input.wpos;
 	const float lightDistance2 = dot(lightVec, lightVec);
 	const float3 lightDir = lightVec * rsqrt(lightDistance2);
 	const float3 wo = mul(tangentFrame, lightDir);
-	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(wi, wo, roughness); // Fresnel = 1 in this implementation.
+	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(wi, wo, effectiveRoughness); // Fresnel = 1 in this implementation.
 	const float3 shadowNDC = NDCTransform(input.wpos, g_lightViewProj);
 	const float2 shadowTexcoord = NDCToTexcoord(shadowNDC.xy);
 	const float visibility = shadowMap.SampleCmpLevelZero(shadowSampler, shadowTexcoord, saturate(shadowNDC.z));
 	const float3 directIllumination = brdf * (g_lightIntensity * visibility * saturate(wo.z) / lightDistance2);
 
 	// Indirect illumination using VSGLs.
-	const float3 indirectIllumination = SGLighting(viewDir, tangentFrame, input.wpos, normal, diffuse, specular.xyz, roughness);
+	const float3 indirectIllumination = SGLighting(viewDir, tangentFrame, input.wpos, normal, diffuse, specular.xyz, effectiveRoughness);
 
 	return directIllumination + indirectIllumination;
 }

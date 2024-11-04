@@ -77,6 +77,7 @@
     <None Include="Shaders\GGX.hlsli" />
     <None Include="Shaders\Math.hlsli" />
     <None Include="Shaders\MathConstants.hlsli" />
+    <None Include="Shaders\NDFFiltering.hlsli" />
     <None Include="Shaders\NormalizedDeviceCoordinate.hlsli" />
     <None Include="Shaders\NormalMapUtility.hlsli" />
     <None Include="Shaders\NumericLimits.hlsli" />
