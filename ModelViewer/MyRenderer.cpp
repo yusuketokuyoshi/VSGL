@@ -409,7 +409,7 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
 
     if (scene.m_modelCutout.m_Header.meshCount > 0)
     {
-        context.SetPipelineState(s_lightingCutoutPSO);
+        context.SetPipelineState(s_previousSGLighting ? s_previousLightingCutoutPSO : s_lightingCutoutPSO);
         Draw(context, scene.m_modelCutout);
     }
 }
