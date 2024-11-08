@@ -5,6 +5,7 @@
 #include "MyRenderer.h"
 #include "Scene.h"
 #include "Shaders/VSGLGenerationSetting.h"
+#include <array>
 
 // Compiled shaders
 #include "CompiledShaders/DepthVS.h"
@@ -132,19 +133,19 @@ void MyRenderer::Initialize()
     s_vsglGenerationSpecularPSO.Finalize();
 
     {
-        constexpr D3D12_INPUT_ELEMENT_DESC DEPTH_ELEMENT_DESCS[] = {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        constexpr std::array DEPTH_ELEMENT_DESCS = {
+            D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
-        constexpr D3D12_INPUT_ELEMENT_DESC CUTOUT_ELEMENT_DESCS[] = {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        constexpr std::array CUTOUT_ELEMENT_DESCS = {
+            D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            D3D12_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
 
         s_depthPSO.SetRootSignature(s_depthRootSig);
         s_depthPSO.SetRasterizerState(Graphics::RasterizerDefault);
         s_depthPSO.SetBlendState(Graphics::BlendNoColorWrite);
         s_depthPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_depthPSO.SetInputLayout(_countof(DEPTH_ELEMENT_DESCS), DEPTH_ELEMENT_DESCS);
+        s_depthPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
         s_depthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_depthPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
         s_depthPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
@@ -154,7 +155,7 @@ void MyRenderer::Initialize()
         s_depthCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
         s_depthCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
         s_depthCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_depthCutoutPSO.SetInputLayout(_countof(CUTOUT_ELEMENT_DESCS), CUTOUT_ELEMENT_DESCS);
+        s_depthCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
         s_depthCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_depthCutoutPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
         s_depthCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
@@ -165,7 +166,7 @@ void MyRenderer::Initialize()
         s_shadowMapPSO.SetRasterizerState(Graphics::RasterizerShadow);
         s_shadowMapPSO.SetBlendState(Graphics::BlendNoColorWrite);
         s_shadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_shadowMapPSO.SetInputLayout(_countof(DEPTH_ELEMENT_DESCS), DEPTH_ELEMENT_DESCS);
+        s_shadowMapPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
         s_shadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_shadowMapPSO.SetRenderTargetFormats(0, nullptr, s_shadowMap.GetFormat());
         s_shadowMapPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
@@ -175,7 +176,7 @@ void MyRenderer::Initialize()
         s_shadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerShadowTwoSided);
         s_shadowMapCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
         s_shadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_shadowMapCutoutPSO.SetInputLayout(_countof(CUTOUT_ELEMENT_DESCS), CUTOUT_ELEMENT_DESCS);
+        s_shadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
         s_shadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_shadowMapCutoutPSO.SetRenderTargetFormats(0, nullptr, s_shadowMap.GetFormat());
         s_shadowMapCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
@@ -183,40 +184,40 @@ void MyRenderer::Initialize()
         s_shadowMapCutoutPSO.Finalize();
     }
     {
-        constexpr D3D12_INPUT_ELEMENT_DESC ELEMENT_DESCS[] = {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        constexpr std::array ELEMENT_DESCS = {
+            D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            D3D12_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            D3D12_INPUT_ELEMENT_DESC{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            D3D12_INPUT_ELEMENT_DESC{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            D3D12_INPUT_ELEMENT_DESC{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
-        const DXGI_FORMAT rsmFormats[] = { s_rsmNormalBuffer.GetFormat(), s_rsmDiffuseBuffer.GetFormat(), s_rsmSpecularBuffer.GetFormat() };
+        const std::array rsmFormats = { s_rsmNormalBuffer.GetFormat(), s_rsmDiffuseBuffer.GetFormat(), s_rsmSpecularBuffer.GetFormat() };
 
         s_reflectiveShadowMapPSO.SetRootSignature(s_rsmRootSig);
         s_reflectiveShadowMapPSO.SetRasterizerState(Graphics::RasterizerDefault);
-        s_reflectiveShadowMapPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_reflectiveShadowMapPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_reflectiveShadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_reflectiveShadowMapPSO.SetBlendState(Graphics::BlendDisable);
         s_reflectiveShadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_reflectiveShadowMapPSO.SetRenderTargetFormats(_countof(rsmFormats), rsmFormats, s_rsmDepthBuffer.GetFormat());
+        s_reflectiveShadowMapPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), s_rsmDepthBuffer.GetFormat());
         s_reflectiveShadowMapPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
         s_reflectiveShadowMapPSO.SetPixelShader(g_pReflectiveShadowMapPS, sizeof(g_pReflectiveShadowMapPS));
         s_reflectiveShadowMapPSO.Finalize();
 
         s_reflectiveShadowMapCutoutPSO.SetRootSignature(s_rsmRootSig);
         s_reflectiveShadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-        s_reflectiveShadowMapCutoutPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_reflectiveShadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_reflectiveShadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_reflectiveShadowMapCutoutPSO.SetBlendState(Graphics::BlendDisable);
         s_reflectiveShadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-        s_reflectiveShadowMapCutoutPSO.SetRenderTargetFormats(_countof(rsmFormats), rsmFormats, s_rsmDepthBuffer.GetFormat());
+        s_reflectiveShadowMapCutoutPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), s_rsmDepthBuffer.GetFormat());
         s_reflectiveShadowMapCutoutPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
         s_reflectiveShadowMapCutoutPSO.SetPixelShader(g_pReflectiveShadowMapCutoutPS, sizeof(g_pReflectiveShadowMapCutoutPS));
         s_reflectiveShadowMapCutoutPSO.Finalize();
 
         s_lightingPSO.SetRootSignature(s_lightingRootSig);
         s_lightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
-        s_lightingPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_lightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_lightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_lightingPSO.SetBlendState(Graphics::BlendDisable);
         s_lightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
@@ -227,7 +228,7 @@ void MyRenderer::Initialize()
 
         s_lightingCutoutPSO.SetRootSignature(s_lightingRootSig);
         s_lightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-        s_lightingCutoutPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_lightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_lightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_lightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
         s_lightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
@@ -238,7 +239,7 @@ void MyRenderer::Initialize()
 
         s_previousLightingPSO.SetRootSignature(s_lightingRootSig);
         s_previousLightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
-        s_previousLightingPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_previousLightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_previousLightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_previousLightingPSO.SetBlendState(Graphics::BlendDisable);
         s_previousLightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
@@ -249,7 +250,7 @@ void MyRenderer::Initialize()
 
         s_previousLightingCutoutPSO.SetRootSignature(s_lightingRootSig);
         s_previousLightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-        s_previousLightingCutoutPSO.SetInputLayout(_countof(ELEMENT_DESCS), ELEMENT_DESCS);
+        s_previousLightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
         s_previousLightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
         s_previousLightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
         s_previousLightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
@@ -300,7 +301,7 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
     const ScopedTimer profile(L"Reflective Shadow Map", context);
 
     const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
-    const D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {
+    const std::array rtvs = {
         s_rsmNormalBuffer.GetRTV(),
         s_rsmDiffuseBuffer.GetRTV(),
         s_rsmSpecularBuffer.GetRTV()
@@ -311,7 +312,7 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
     context.SetViewportAndScissor(0, 0, s_rsmDepthBuffer.GetWidth(), s_rsmDepthBuffer.GetHeight());
     context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-    context.SetRenderTargets(_countof(rtvs), rtvs, s_rsmDepthBuffer.GetDSV());
+    context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), s_rsmDepthBuffer.GetDSV());
     context.SetPipelineState(s_reflectiveShadowMapPSO);
     Draw(context, scene.m_model);
 
@@ -383,7 +384,7 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
 
     const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
 
-    __declspec(align(16)) struct {
+    alignas(16) struct {
         XMMATRIX lightViewProj;
         XMVECTOR cameraPosition;
         XMFLOAT3 lightPosition;
@@ -438,7 +439,7 @@ void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera&
     const float planeWidth = 2.0f * tan(spotLight.GetFOV() / 2.0f);
     const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
 
-    __declspec(align(16)) struct {
+    alignas(16) struct {
         XMMATRIX lightViewProjInv;
         XMVECTOR lightPosition;
         XMFLOAT3 lightAxis;
@@ -453,14 +454,14 @@ void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera&
     context.SetDynamicConstantBufferView(VSGL_ROOT_INDEX_CBV, sizeof(constants), &constants);
     context.SetBufferUAV(VSGL_ROOT_INDEX_UAV, s_sgLightBuffer);
 
-    const D3D12_CPU_DESCRIPTOR_HANDLE srvs[] = {
+    const std::array srvs = {
         s_rsmDepthBuffer.GetDepthSRV(),
         s_rsmNormalBuffer.GetSRV(),
         s_rsmDiffuseBuffer.GetSRV(),
     };
 
     // Generate Diffuse VSGLs.
-    context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, _countof(srvs), srvs);
+    context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, static_cast<UINT>(srvs.size()), srvs.data());
     context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 0);
     context.SetPipelineState(s_vsglGenerationDiffusePSO);
     context.Dispatch(1, 1, 1);
