@@ -21,7 +21,7 @@ It roughly approximates virtual point lights (VPLs) with two *[virtual spherical
 We use an accurate SG lighting method presented in "*[Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting](https://yusuketokuyoshi.com/#Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting)*" (SIGGRAPH ASIA 2024 Conference Paper).
 For the GGX microfacet BRDF under sharp SG lights, this method produces higher-quality highlights than the conventional anisotropic SG lighting method [[Xu et al. 2013](https://doi.org/10.1145/2508363.2508386)].
 
-|<img width="256" src="asg_lighting.webp" loading="lazy" />|<img width="256" src="reference_sg_lighting.webp" loading="lazy" />|<img width="256" src="ndf_filtering-based_sg_lighting.webp" loading="lazy" />|
+|<img width="256" src="asg_lighting.webp">|<img width="256" src="reference_sg_lighting.webp">|<img width="256" src="ndf_filtering-based_sg_lighting.webp">|
 |:---:|:---:|:---:|
 |Anisotropic SG lighting<br>[[Xu et al. 2013](https://doi.org/10.1145/2508363.2508386)]|Our SG lighting<br>[[Tokuyoshi et al. 2024](https://yusuketokuyoshi.com/#Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting)]|Reference|
 
@@ -33,8 +33,8 @@ For the GGX microfacet BRDF under sharp SG lights, this method produces higher-q
 
 ## Requirements
 
- - Windows 10 version 2004
- - [Visual Studio 2019](https://visualstudio.com/) with [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
+ - Windows 10
+ - [Visual Studio](https://visualstudio.com/) with [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
 
 ## Getting Started
 
