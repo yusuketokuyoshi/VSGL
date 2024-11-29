@@ -48,29 +48,14 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 	return result;
 }
 
-// Exact product integral
-// [Tsai and Shih. 2006, "All-Frequency Precomputed Radiance Transfer using Spherical Radial Basis Functions and Clustered Tensor Approximation"].
-float SGProductIntegral(const SGLobe sg1, const SGLobe sg2)
-{
-	const SGLobe lobe = SGProduct(sg1.axis, sg1.sharpness, sg2.axis, sg2.sharpness);
-
-	return exp(sg1.logAmplitude + sg2.logAmplitude + lobe.logAmplitude) * SGIntegral(lobe.sharpness);
-}
-
-// Approximate product integral / pi.
-// [Iwasaki et al. 12, "Interactive Bi-scale Editing of Highly Glossy Materials"].
-float SGApproxProductIntegralOverPi(const SGLobe sg1, const SGLobe sg2)
+// Approximate product integral.
+// [Iwasaki et al. 2012, "Interactive Bi-scale Editing of Highly Glossy Materials"].
+float SGApproxProductIntegral(const SGLobe sg1, const SGLobe sg2)
 {
 	const float sharpnessSum = sg1.sharpness + sg2.sharpness;
 	const float sharpness = sg1.sharpness * sg2.sharpness / sharpnessSum;
 
-	return 2.0 * SGEvaluate(sg1.axis, sg2.axis, sharpness, sg1.logAmplitude + sg2.logAmplitude) / sharpnessSum;
-}
-
-// Approximate product integral.
-float SGApproxProductIntegral(const SGLobe sg1, const SGLobe sg2)
-{
-	return M_PI * SGApproxProductIntegralOverPi(sg1, sg2);
+	return 2.0 * M_PI * SGEvaluate(sg1.axis, sg2.axis, sharpness, sg1.logAmplitude + sg2.logAmplitude) / sharpnessSum;
 }
 
 // Approximate hemispherical integral of an SG / 2pi.
