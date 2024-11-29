@@ -66,7 +66,7 @@ float SGHemisphericalIntegralOverTwoPi(const float cosine, const float sharpness
 	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// First we compute the sigmoid-form interpolation factor.
 	// Instead of a logistic approximation [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"],
-	// we approxiamte the interpolation factor using the CDF of a Gaussian (i.e. normalized error function).
+	// we approximate the interpolation factor using the CDF of a Gaussian (i.e. normalized error function).
 
 	// Our fitted steepness for the CDF.
 	const float A = 0.6517328826907056171791055021459;
