@@ -9,13 +9,13 @@ ExpVar g_spotLightIntensity("Application/Light Intensity", 4000000.0f);
 
 class ModelViewer : public GameCore::IGameApp
 {
-public:
+  public:
 	virtual void Startup() override;
 	virtual void Cleanup() override;
 	virtual void Update(const float deltaT) override;
 	virtual void RenderScene() override;
 
-private:
+  private:
 	Scene m_scene;
 };
 
@@ -33,15 +33,15 @@ void ModelViewer::Startup()
 	constexpr float NEAR_Z_CLIP = 1.0f;
 	constexpr float FAR_Z_CLIP = 10000.0f;
 
-	const Vector3 CAMERA_POS = { -500.0, 200.0, 400.0 };
-	const Vector3 CAMERA_DIR = { 1.0, -0.2, 0.0 };
+	const Vector3 CAMERA_POS = {-500.0, 200.0, 400.0};
+	const Vector3 CAMERA_DIR = {1.0, -0.2, 0.0};
 	m_scene.m_camera.SetEyeAtUp(CAMERA_POS, CAMERA_POS + CAMERA_DIR, Vector3(kYUnitVector));
 	m_scene.m_camera.SetZRange(NEAR_Z_CLIP, FAR_Z_CLIP);
 	m_scene.m_cameraController.reset(new FlyingFPSCamera(m_scene.m_camera, Vector3(kYUnitVector)));
 	m_scene.m_cameraController->Update(0.0f);
 
-	const Vector3 LIGHT_POS = { 300.0, 150.0, 400.0 };
-	const Vector3 LIGHT_DIR = { 1.0, -0.5, -1.0 };
+	const Vector3 LIGHT_POS = {300.0, 150.0, 400.0};
+	const Vector3 LIGHT_DIR = {1.0, -0.5, -1.0};
 	m_scene.m_spotlight.SetEyeAtUp(LIGHT_POS, LIGHT_POS + LIGHT_DIR, Vector3(kYUnitVector));
 	m_scene.m_spotlight.SetZRange(NEAR_Z_CLIP, FAR_Z_CLIP);
 	m_scene.m_spotlight.SetAspectRatio(1.0f);

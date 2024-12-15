@@ -17,7 +17,7 @@ float ASGSharpnessToSGSharpness(const float2 sharpness)
 	return 2.0 * sqrt(sharpness.x * sharpness.y);
 }
 
-float SGSharpnessToASGSharpness(const float  sharpness)
+float SGSharpnessToASGSharpness(const float sharpness)
 {
 	return 0.5 * sharpness;
 }

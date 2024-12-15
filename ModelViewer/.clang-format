@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+TabWidth: 4
+UseTab: AlignWithSpaces
+ColumnLimit: 0
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+SortIncludes: Never
