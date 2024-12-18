@@ -6,6 +6,10 @@
 #include "Scene.h"
 #include "Shaders/VSGLGenerationSetting.h"
 #include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 
 // Compiled shaders
 #include "CompiledShaders/DepthVS.h"
@@ -22,9 +26,9 @@
 #include "CompiledShaders/PreviousLightingPS.h"
 #include "CompiledShaders/PreviousLightingCutoutPS.h"
 
-namespace MyRenderer
+namespace
 {
-BoolVar s_previousSGLighting("SG lighting/Previous method", false);
+BoolVar s_previousSGLighting{"SG lighting/Previous method", false};
 
 enum GFX_ROOT_INDEX
 {
@@ -42,39 +46,253 @@ enum VSGL_ROOT_INDEX
 	VSGL_ROOT_INDEX_UAV,
 };
 
-static DepthBuffer s_shadowMap;
-static DepthBuffer s_rsmDepthBuffer;
-static ColorBuffer s_rsmNormalBuffer;
-static ColorBuffer s_rsmDiffuseBuffer;
-static ColorBuffer s_rsmSpecularBuffer;
-static StructuredBuffer s_sgLightBuffer;
-static DescriptorHandle s_lightingDescriptorTable;
+DepthBuffer s_shadowMap;
+DepthBuffer s_rsmDepthBuffer;
+ColorBuffer s_rsmNormalBuffer;
+ColorBuffer s_rsmDiffuseBuffer;
+ColorBuffer s_rsmSpecularBuffer;
+StructuredBuffer s_sgLightBuffer;
+DescriptorHandle s_lightingDescriptorTable;
 
-static RootSignature s_depthRootSig;
-static RootSignature s_rsmRootSig;
-static RootSignature s_lightingRootSig;
-static RootSignature s_vsglRootSig;
-static GraphicsPSO s_depthPSO = {L"s_depthPSO"};
-static GraphicsPSO s_depthCutoutPSO = {L"s_depthCutoutPSO"};
-static GraphicsPSO s_shadowMapPSO = {L"s_shadowMapPSO"};
-static GraphicsPSO s_shadowMapCutoutPSO = {L"s_shadowMapCutoutPSO"};
-static GraphicsPSO s_reflectiveShadowMapPSO = {L"s_reflectiveShadowMapPSO"};
-static GraphicsPSO s_reflectiveShadowMapCutoutPSO = {L"s_reflectiveShadowMapCutoutPSO"};
-static GraphicsPSO s_lightingPSO = {L"s_lightingPSO"};
-static GraphicsPSO s_lightingCutoutPSO = {L"s_lightingCutoutPSO"};
-static GraphicsPSO s_previousLightingPSO = {L"s_previousLightingPSO"};
-static GraphicsPSO s_previousLightingCutoutPSO = {L"s_previousLightingCutoutPSO"};
-static ComputePSO s_vsglGenerationDiffusePSO = {L"s_vsglGenerationDiffusePSO"};
-static ComputePSO s_vsglGenerationSpecularPSO = {L"s_vsglGenerationSpecularPSO"};
+RootSignature s_depthRootSig;
+RootSignature s_rsmRootSig;
+RootSignature s_lightingRootSig;
+RootSignature s_vsglRootSig;
+GraphicsPSO s_depthPSO = {L"s_depthPSO"};
+GraphicsPSO s_depthCutoutPSO = {L"s_depthCutoutPSO"};
+GraphicsPSO s_shadowMapPSO = {L"s_shadowMapPSO"};
+GraphicsPSO s_shadowMapCutoutPSO = {L"s_shadowMapCutoutPSO"};
+GraphicsPSO s_reflectiveShadowMapPSO = {L"s_reflectiveShadowMapPSO"};
+GraphicsPSO s_reflectiveShadowMapCutoutPSO = {L"s_reflectiveShadowMapCutoutPSO"};
+GraphicsPSO s_lightingPSO = {L"s_lightingPSO"};
+GraphicsPSO s_lightingCutoutPSO = {L"s_lightingCutoutPSO"};
+GraphicsPSO s_previousLightingPSO = {L"s_previousLightingPSO"};
+GraphicsPSO s_previousLightingCutoutPSO = {L"s_previousLightingCutoutPSO"};
+ComputePSO s_vsglGenerationDiffusePSO = {L"s_vsglGenerationDiffusePSO"};
+ComputePSO s_vsglGenerationSpecularPSO = {L"s_vsglGenerationSpecularPSO"};
 
-static void ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene);
-static void ShadowMapPass(GraphicsContext& context, const Scene& scene);
-static void VSGLGenerationPass(ComputeContext& context, const Math::Camera& spotLight, const float lightIntensity);
-static void DepthPass(GraphicsContext& context, const Scene& scene);
-static void LightingPass(GraphicsContext& context, const Scene& scene);
-static void Draw(GraphicsContext& context, const ModelH3D& model);
-static void DrawDepth(GraphicsContext& context, const ModelH3D& model);
-} // namespace MyRenderer
+void DrawDepth(GraphicsContext& context, const ModelH3D& model)
+{
+	context.SetIndexBuffer(model.GetIndexBuffer());
+	context.SetVertexBuffer(0, model.GetVertexBuffer());
+	const uint32_t vertexStride = model.GetVertexStride();
+
+	for (uint32_t meshIndex = 0; meshIndex < model.GetMeshCount(); ++meshIndex)
+	{
+		const ModelH3D::Mesh& mesh = model.GetMesh(meshIndex);
+
+		assert(mesh.indexCount % 3 == 0);
+		assert(mesh.indexDataByteOffset % (sizeof(uint16_t) * 3) == 0);
+		assert(mesh.vertexDataByteOffset % vertexStride == 0);
+
+		const uint32_t indexCount = mesh.indexCount;
+		const uint32_t startIndex = mesh.indexDataByteOffset / sizeof(uint16_t);
+		const uint32_t baseVertex = mesh.vertexDataByteOffset / vertexStride;
+
+		context.DrawIndexed(indexCount, startIndex, static_cast<INT>(baseVertex));
+	}
+}
+
+void Draw(GraphicsContext& context, const ModelH3D& model)
+{
+	context.SetIndexBuffer(model.GetIndexBuffer());
+	context.SetVertexBuffer(0, model.GetVertexBuffer());
+	const uint32_t vertexStride = model.GetVertexStride();
+	uint32_t materialIndex = std::numeric_limits<uint32_t>::max();
+
+	for (uint32_t meshIndex = 0; meshIndex < model.GetMeshCount(); ++meshIndex)
+	{
+		const ModelH3D::Mesh& mesh = model.GetMesh(meshIndex);
+
+		assert(mesh.indexCount % 3 == 0);
+		assert(mesh.indexDataByteOffset % (sizeof(uint16_t) * 3) == 0);
+		assert(mesh.vertexDataByteOffset % vertexStride == 0);
+
+		const uint32_t indexCount = mesh.indexCount;
+		const uint32_t startIndex = mesh.indexDataByteOffset / sizeof(uint16_t);
+		const uint32_t baseVertex = mesh.vertexDataByteOffset / vertexStride;
+
+		if (mesh.materialIndex != materialIndex)
+		{
+			materialIndex = mesh.materialIndex;
+			context.SetDescriptorTable(ROOT_INDEX_PS_SRV0, model.GetSRVs(materialIndex));
+		}
+
+		context.DrawIndexed(indexCount, startIndex, static_cast<INT>(baseVertex));
+	}
+}
+
+void ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Reflective Shadow Map", context);
+
+	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
+	const std::array rtvs = {s_rsmNormalBuffer.GetRTV(), s_rsmDiffuseBuffer.GetRTV(), s_rsmSpecularBuffer.GetRTV()};
+
+	context.SetRootSignature(s_rsmRootSig);
+	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+	context.SetViewportAndScissor(0, 0, s_rsmDepthBuffer.GetWidth(), s_rsmDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), s_rsmDepthBuffer.GetDSV());
+	context.SetPipelineState(s_reflectiveShadowMapPSO);
+	Draw(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetPipelineState(s_reflectiveShadowMapCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+
+	context.BeginResourceTransition(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+}
+
+void ShadowMapPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Shadow Map", context);
+
+	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
+
+	context.SetRootSignature(s_depthRootSig);
+	context.SetViewportAndScissor(0, 0, s_shadowMap.GetWidth(), s_shadowMap.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDepthStencilTarget(s_shadowMap.GetDSV());
+	context.SetPipelineState(s_shadowMapPSO);
+	DrawDepth(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+		context.SetPipelineState(s_shadowMapCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+
+	context.BeginResourceTransition(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+}
+
+void DepthPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Depth", context);
+
+	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
+
+	context.SetRootSignature(s_depthRootSig);
+	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
+	context.SetPipelineState(s_depthPSO);
+	DrawDepth(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+		context.SetPipelineState(s_depthCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+}
+
+void LightingPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Lighting", context);
+
+	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
+	context.TransitionResource(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
+
+	alignas(16) struct
+	{
+		XMMATRIX lightViewProj;
+		XMVECTOR cameraPosition;
+		XMFLOAT3 lightPosition;
+		float lightIntensity;
+	} constants;
+
+	constants.lightViewProj = scene.m_spotlight.GetViewProjMatrix();
+	constants.cameraPosition = scene.m_camera.GetPosition();
+	XMStoreFloat3(&constants.lightPosition, scene.m_spotlight.GetPosition());
+	constants.lightIntensity = scene.m_spotlightIntensity;
+
+	context.SetRootSignature(s_lightingRootSig);
+	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
+	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
+	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
+	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
+	context.SetPipelineState(s_previousSGLighting ? s_previousLightingPSO : s_lightingPSO);
+	Draw(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetPipelineState(s_previousSGLighting ? s_previousLightingCutoutPSO : s_lightingCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+}
+
+// Generate a diffuse VSGL and specular VSGL from an RSM.
+void VSGLGenerationPass(ComputeContext& context, const Math::Camera& spotLight, const float lightIntensity)
+{
+	static_assert(RSM_WIDTH % THREAD_GROUP_WIDTH == 0);
+	assert(s_rsmDepthBuffer.GetWidth() == RSM_WIDTH);
+	assert(s_rsmDepthBuffer.GetHeight() == RSM_WIDTH);
+	assert(s_rsmNormalBuffer.GetWidth() == RSM_WIDTH);
+	assert(s_rsmNormalBuffer.GetHeight() == RSM_WIDTH);
+	assert(s_rsmDiffuseBuffer.GetWidth() == RSM_WIDTH);
+	assert(s_rsmDiffuseBuffer.GetHeight() == RSM_WIDTH);
+	assert(s_rsmSpecularBuffer.GetWidth() == RSM_WIDTH);
+	assert(s_rsmSpecularBuffer.GetHeight() == RSM_WIDTH);
+
+	const ScopedTimer profile(L"VSGL Generation", context);
+
+	context.TransitionResource(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.SetRootSignature(s_vsglRootSig);
+
+	const float planeWidth = 2.0f * std::tan(spotLight.GetFOV() / 2.0f);
+	const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
+
+	alignas(16) struct
+	{
+		XMMATRIX lightViewProjInv;
+		XMVECTOR lightPosition;
+		XMFLOAT3 lightAxis;
+		float photonPower;
+	} constants;
+
+	constants.lightViewProjInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
+	constants.lightPosition = spotLight.GetPosition();
+	XMStoreFloat3(&constants.lightAxis, XMVector3Cross(spotLight.GetUpVec(), spotLight.GetRightVec()));
+	constants.photonPower = photonPower;
+
+	context.SetDynamicConstantBufferView(VSGL_ROOT_INDEX_CBV, sizeof(constants), &constants);
+	context.SetBufferUAV(VSGL_ROOT_INDEX_UAV, s_sgLightBuffer);
+
+	const std::array srvs = {s_rsmDepthBuffer.GetDepthSRV(), s_rsmNormalBuffer.GetSRV(), s_rsmDiffuseBuffer.GetSRV()};
+
+	// Generate Diffuse VSGLs.
+	context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, static_cast<UINT>(srvs.size()), srvs.data());
+	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 0);
+	context.SetPipelineState(s_vsglGenerationDiffusePSO);
+	context.Dispatch(1, 1, 1);
+
+	// Generate Specular VSGLs.
+	context.SetDynamicDescriptor(VSGL_ROOT_INDEX_SRV, 2, s_rsmSpecularBuffer.GetSRV());
+	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 1);
+	context.SetPipelineState(s_vsglGenerationSpecularPSO);
+	context.Dispatch(1, 1, 1);
+}
+} // namespace
 
 void MyRenderer::Initialize()
 {
@@ -86,7 +304,7 @@ void MyRenderer::Initialize()
 	s_sgLightBuffer.Create(L"s_sgLightBuffer", 2, sizeof(uint32_t) * 12);
 
 	// Allocate a descriptor table for forward rendering
-	constexpr uint_fast8_t LIGHTING_DESCRIPTOR_TABLE_SIZE = 1;
+	constexpr uint32_t LIGHTING_DESCRIPTOR_TABLE_SIZE = 1;
 	s_lightingDescriptorTable = Renderer::s_TextureHeap.Alloc(LIGHTING_DESCRIPTOR_TABLE_SIZE);
 	Graphics::g_Device->CopyDescriptorsSimple(1, s_lightingDescriptorTable, s_shadowMap.GetDepthSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -296,226 +514,4 @@ void MyRenderer::Render(GraphicsContext& context, const Scene& scene)
 	VSGLGenerationPass(context.GetComputeContext(), scene.m_spotlight, scene.m_spotlightIntensity);
 	DepthPass(context, scene);
 	LightingPass(context, scene);
-}
-
-void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Reflective Shadow Map", context);
-
-	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
-	const std::array rtvs = {s_rsmNormalBuffer.GetRTV(), s_rsmDiffuseBuffer.GetRTV(), s_rsmSpecularBuffer.GetRTV()};
-
-	context.SetRootSignature(s_rsmRootSig);
-	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-	context.SetViewportAndScissor(0, 0, s_rsmDepthBuffer.GetWidth(), s_rsmDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), s_rsmDepthBuffer.GetDSV());
-	context.SetPipelineState(s_reflectiveShadowMapPSO);
-	Draw(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetPipelineState(s_reflectiveShadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-
-	context.BeginResourceTransition(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-}
-
-void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Shadow Map", context);
-
-	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
-
-	context.SetRootSignature(s_depthRootSig);
-	context.SetViewportAndScissor(0, 0, s_shadowMap.GetWidth(), s_shadowMap.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDepthStencilTarget(s_shadowMap.GetDSV());
-	context.SetPipelineState(s_shadowMapPSO);
-	DrawDepth(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-		context.SetPipelineState(s_shadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-
-	context.BeginResourceTransition(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-}
-
-void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Depth", context);
-
-	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
-
-	context.SetRootSignature(s_depthRootSig);
-	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
-	context.SetPipelineState(s_depthPSO);
-	DrawDepth(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-		context.SetPipelineState(s_depthCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-}
-
-void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Lighting", context);
-
-	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
-	context.TransitionResource(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
-	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
-
-	alignas(16) struct
-	{
-		XMMATRIX lightViewProj;
-		XMVECTOR cameraPosition;
-		XMFLOAT3 lightPosition;
-		float lightIntensity;
-	} constants;
-
-	constants.lightViewProj = scene.m_spotlight.GetViewProjMatrix();
-	constants.cameraPosition = scene.m_camera.GetPosition();
-	XMStoreFloat3(&constants.lightPosition, scene.m_spotlight.GetPosition());
-	constants.lightIntensity = scene.m_spotlightIntensity;
-
-	context.SetRootSignature(s_lightingRootSig);
-	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
-	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
-	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
-	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-	context.SetPipelineState(s_previousSGLighting ? s_previousLightingPSO : s_lightingPSO);
-	Draw(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetPipelineState(s_previousSGLighting ? s_previousLightingCutoutPSO : s_lightingCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-}
-
-// Generate a diffuse VSGL and specular VSGL from an RSM.
-void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera& spotLight, const float lightIntensity)
-{
-	static_assert(RSM_WIDTH % THREAD_GROUP_WIDTH == 0);
-	assert(s_rsmDepthBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmDepthBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmNormalBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmNormalBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmDiffuseBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmDiffuseBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmSpecularBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmSpecularBuffer.GetHeight() == RSM_WIDTH);
-
-	const ScopedTimer profile(L"VSGL Generation", context);
-
-	context.TransitionResource(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.SetRootSignature(s_vsglRootSig);
-
-	const float planeWidth = 2.0f * tan(spotLight.GetFOV() / 2.0f);
-	const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
-
-	alignas(16) struct
-	{
-		XMMATRIX lightViewProjInv;
-		XMVECTOR lightPosition;
-		XMFLOAT3 lightAxis;
-		float photonPower;
-	} constants;
-
-	constants.lightViewProjInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
-	constants.lightPosition = spotLight.GetPosition();
-	XMStoreFloat3(&constants.lightAxis, XMVector3Cross(spotLight.GetUpVec(), spotLight.GetRightVec()));
-	constants.photonPower = photonPower;
-
-	context.SetDynamicConstantBufferView(VSGL_ROOT_INDEX_CBV, sizeof(constants), &constants);
-	context.SetBufferUAV(VSGL_ROOT_INDEX_UAV, s_sgLightBuffer);
-
-	const std::array srvs = {s_rsmDepthBuffer.GetDepthSRV(), s_rsmNormalBuffer.GetSRV(), s_rsmDiffuseBuffer.GetSRV()};
-
-	// Generate Diffuse VSGLs.
-	context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, static_cast<UINT>(srvs.size()), srvs.data());
-	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 0);
-	context.SetPipelineState(s_vsglGenerationDiffusePSO);
-	context.Dispatch(1, 1, 1);
-
-	// Generate Specular VSGLs.
-	context.SetDynamicDescriptor(VSGL_ROOT_INDEX_SRV, 2, s_rsmSpecularBuffer.GetSRV());
-	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 1);
-	context.SetPipelineState(s_vsglGenerationSpecularPSO);
-	context.Dispatch(1, 1, 1);
-}
-
-void MyRenderer::DrawDepth(GraphicsContext& context, const ModelH3D& model)
-{
-	context.SetIndexBuffer(model.GetIndexBuffer());
-	context.SetVertexBuffer(0, model.GetVertexBuffer());
-	const uint32_t vertexStride = model.GetVertexStride();
-
-	for (uint32_t meshIndex = 0; meshIndex < model.GetMeshCount(); ++meshIndex)
-	{
-		const ModelH3D::Mesh& mesh = model.GetMesh(meshIndex);
-
-		assert(mesh.indexCount % 3 == 0);
-		assert(mesh.indexDataByteOffset % (sizeof(uint16_t) * 3) == 0);
-		assert(mesh.vertexDataByteOffset % vertexStride == 0);
-
-		const uint32_t indexCount = mesh.indexCount;
-		const uint32_t startIndex = mesh.indexDataByteOffset / sizeof(uint16_t);
-		const uint32_t baseVertex = mesh.vertexDataByteOffset / vertexStride;
-
-		context.DrawIndexed(indexCount, startIndex, baseVertex);
-	}
-}
-
-void MyRenderer::Draw(GraphicsContext& context, const ModelH3D& model)
-{
-	context.SetIndexBuffer(model.GetIndexBuffer());
-	context.SetVertexBuffer(0, model.GetVertexBuffer());
-	const uint32_t vertexStride = model.GetVertexStride();
-	uint32_t materialIndex = std::numeric_limits<uint32_t>::max();
-
-	for (uint32_t meshIndex = 0; meshIndex < model.GetMeshCount(); ++meshIndex)
-	{
-		const ModelH3D::Mesh& mesh = model.GetMesh(meshIndex);
-
-		assert(mesh.indexCount % 3 == 0);
-		assert(mesh.indexDataByteOffset % (sizeof(uint16_t) * 3) == 0);
-		assert(mesh.vertexDataByteOffset % vertexStride == 0);
-
-		const uint32_t indexCount = mesh.indexCount;
-		const uint32_t startIndex = mesh.indexDataByteOffset / sizeof(uint16_t);
-		const uint32_t baseVertex = mesh.vertexDataByteOffset / vertexStride;
-
-		if (mesh.materialIndex != materialIndex)
-		{
-			materialIndex = mesh.materialIndex;
-			context.SetDescriptorTable(ROOT_INDEX_PS_SRV0, model.GetSRVs(materialIndex));
-		}
-
-		context.DrawIndexed(indexCount, startIndex, baseVertex);
-	}
 }

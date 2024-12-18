@@ -5,18 +5,20 @@
 #include "MyRenderer.h"
 #include "Scene.h"
 
-ExpVar g_spotLightIntensity("Application/Light Intensity", 4000000.0f);
+namespace
+{
+ExpVar g_spotLightIntensity{"Application/Light Intensity", 4000000.0f};
 
 class ModelViewer : public GameCore::IGameApp
 {
-  public:
-	virtual void Startup() override;
-	virtual void Cleanup() override;
-	virtual void Update(const float deltaT) override;
-	virtual void RenderScene() override;
-
   private:
 	Scene m_scene;
+
+  public:
+	void Startup() override;
+	void Cleanup() override;
+	void Update(const float deltaT) override;
+	void RenderScene() override;
 };
 
 void ModelViewer::Startup()
@@ -37,7 +39,7 @@ void ModelViewer::Startup()
 	const Vector3 CAMERA_DIR = {1.0, -0.2, 0.0};
 	m_scene.m_camera.SetEyeAtUp(CAMERA_POS, CAMERA_POS + CAMERA_DIR, Vector3(kYUnitVector));
 	m_scene.m_camera.SetZRange(NEAR_Z_CLIP, FAR_Z_CLIP);
-	m_scene.m_cameraController.reset(new FlyingFPSCamera(m_scene.m_camera, Vector3(kYUnitVector)));
+	m_scene.m_cameraController = std::make_unique<FlyingFPSCamera>(m_scene.m_camera, Vector3(kYUnitVector));
 	m_scene.m_cameraController->Update(0.0f);
 
 	const Vector3 LIGHT_POS = {300.0, 150.0, 400.0};
@@ -45,7 +47,7 @@ void ModelViewer::Startup()
 	m_scene.m_spotlight.SetEyeAtUp(LIGHT_POS, LIGHT_POS + LIGHT_DIR, Vector3(kYUnitVector));
 	m_scene.m_spotlight.SetZRange(NEAR_Z_CLIP, FAR_Z_CLIP);
 	m_scene.m_spotlight.SetAspectRatio(1.0f);
-	m_scene.m_spotlightController.reset(new FlyingFPSCamera(m_scene.m_spotlight, Vector3(kYUnitVector)));
+	m_scene.m_spotlightController = std::make_unique<FlyingFPSCamera>(m_scene.m_spotlight, Vector3(kYUnitVector));
 	m_scene.m_spotlightController->Update(0.0f);
 }
 
@@ -78,9 +80,10 @@ void ModelViewer::RenderScene()
 	MyRenderer::Render(context, m_scene);
 	context.Finish();
 }
+} // namespace
 
-int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/, _In_ int nCmdShow)
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/, _In_ int nShowCmd)
 {
 	ModelViewer modelViewer;
-	return GameCore::RunApplication(modelViewer, L"ModelViewer", hInstance, nCmdShow);
+	return GameCore::RunApplication(modelViewer, L"ModelViewer", hInstance, nShowCmd);
 }
