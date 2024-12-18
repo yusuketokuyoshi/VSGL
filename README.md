@@ -12,9 +12,9 @@ It roughly approximates virtual point lights (VPLs) with two *[virtual spherical
 
 ### Algorithm
 
- 1. [Generate VPLs by rendering a reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/ReflectiveShadowMapPS.hlsl)
- 2. [Approximate the VPLs into a diffuse VSGL and glossy VSGL](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/VSGLGenerationCS.hlsli)
- 3. [Compute lighting from the two VSGLs](https://github.com/yusuketokuyoshi/VSGL/blob/master/ModelViewer/Shaders/LightingPS.hlsl)
+ 1. [Generate VPLs by rendering a reflective shadow map](https://github.com/yusuketokuyoshi/VSGL/blob/master/VSGL/Shaders/ReflectiveShadowMapPS.hlsl)
+ 2. [Approximate the VPLs into a diffuse VSGL and glossy VSGL](https://github.com/yusuketokuyoshi/VSGL/blob/master/VSGL/Shaders/VSGLGenerationCS.hlsli)
+ 3. [Compute lighting from the two VSGLs](https://github.com/yusuketokuyoshi/VSGL/blob/master/VSGL/Shaders/LightingPS.hlsl)
 
 ### Accurate Spherical Gaussian (SG) Lighting
 
@@ -38,7 +38,7 @@ For the GGX microfacet BRDF under sharp SG lights, this method produces higher-q
 
 ## Getting Started
 
- 1. Open `ModelViewer/ModelViewer.sln`
+ 1. Open `VSGL/VSGL.sln`
  2. Select configuration: Debug (full validation), Profile (instrumented), Release
  3. Build and run
 
