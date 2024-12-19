@@ -63,4 +63,4 @@ For the GGX microfacet BRDF under sharp SG lights, this method produces higher-q
 
 ## License
 
-This software is released under the MIT License, see [`LICENSE.txt`](https://github.com/yusuketokuyoshi/VSGL/blob/master/LICENSE.txt).
+This software is released under the MIT License, see [`LICENSE`](https://github.com/yusuketokuyoshi/VSGL/blob/master/LICENSE).
