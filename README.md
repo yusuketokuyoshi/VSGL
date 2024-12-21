@@ -60,7 +60,3 @@ For the GGX microfacet BRDF under sharp SG lights, this method produces higher-q
  - Navigate debug menu: dpad or arrow keys
  - Toggle debug menu item: A button or return
  - Adjust debug menu value: dpad left/right or left/right arrow keys
-
-## License
-
-This software is released under the MIT License, see [`LICENSE`](https://github.com/yusuketokuyoshi/VSGL/blob/master/LICENSE).
