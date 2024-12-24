@@ -4,6 +4,23 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: AlignWithSpaces
 ColumnLimit: 0
-BreakBeforeBraces: Allman
+AllowShortBlocksOnASingleLine: Always
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+BreakBeforeBraces: Custom
+BraceWrapping:
+ AfterCaseLabel: true
+ AfterClass: true
+ AfterControlStatement: Always
+ AfterEnum: true
+ AfterFunction: true
+ AfterNamespace: true
+ AfterStruct: true
+ AfterUnion: true
+ AfterExternBlock: true
+ BeforeCatch: true
+ BeforeElse: true
+ BeforeLambdaBody: false
+ BeforeWhile: true
 PointerAlignment: Left
+QualifierAlignment: Left
 SortIncludes: Never
