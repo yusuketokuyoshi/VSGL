@@ -3,6 +3,8 @@
 #include "ModelH3D.h"
 #include "Camera.h"
 #include "CameraController.h"
+#include <cstdint>
+#include <memory>
 
 class Scene
 {
@@ -11,8 +13,8 @@ class Scene
 	{
 		m_model.Clear();
 		m_modelCutout.Clear();
-		m_cameraController.release();
-		m_spotlightController.release();
+		m_cameraController = nullptr;
+		m_spotlightController = nullptr;
 	}
 
 	static constexpr uint32_t MODEL_SRV_COUNT = 4;
