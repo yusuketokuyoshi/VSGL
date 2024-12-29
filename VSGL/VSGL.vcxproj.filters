@@ -65,10 +65,10 @@
     <ClInclude Include="Shaders\VSGLGenerationSetting.h">
       <Filter>Shaders</Filter>
     </ClInclude>
-    <ClInclude Include="Scene.h">
+    <ClInclude Include="Scene.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="MyRenderer.h">
+    <ClInclude Include="MyRenderer.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

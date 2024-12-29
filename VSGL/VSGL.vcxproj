@@ -88,8 +88,8 @@
     <None Include="Shaders\VSGLGenerationCS.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MyRenderer.h" />
-    <ClInclude Include="Scene.h" />
+    <ClInclude Include="MyRenderer.hpp" />
+    <ClInclude Include="Scene.hpp" />
     <ClInclude Include="Shaders\VSGLGenerationSetting.h" />
   </ItemGroup>
   <ItemGroup>
