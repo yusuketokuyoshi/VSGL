@@ -2,8 +2,8 @@
 #include "BufferManager.h"
 #include "CommandContext.h"
 #include "Renderer.h"
-#include "MyRenderer.h"
-#include "Scene.h"
+#include "MyRenderer.hpp"
+#include "Scene.hpp"
 #include "Shaders/VSGLGenerationSetting.h"
 #include <array>
 #include <cassert>

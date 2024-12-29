@@ -2,8 +2,8 @@
 #include "PostEffects.h"
 #include "GameInput.h"
 #include "Renderer.h"
-#include "MyRenderer.h"
-#include "Scene.h"
+#include "MyRenderer.hpp"
+#include "Scene.hpp"
 #include <memory>
 
 namespace
