@@ -12,9 +12,11 @@ struct SGLobe
 	float  logAmplitude;
 };
 
-float SGEvaluate(const float3 dir, const float3 axis, const float sharpness, const float logAmplitude = 0.0)
+float SGEvaluate(const float3 dir, const float3 axis, const float sharpness)
 {
-	return exp(logAmplitude + sharpness * (dot(dir, axis) - 1.0));
+	const float3 d = dir - axis;
+	const float len2 = dot(d, d); // -0.5 * len2 = dot(dir, axis) - 1. Using len2 improves the numerical stability for dir \approx axis.
+	return exp(-0.5 * sharpness * len2);
 }
 
 // Exact solution of an SG integral.
@@ -38,24 +40,23 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 	const float sharpness = length(axis);
 
 	// Compute logAmplitude = sharpness - sharpness1 - sharpness2 using a numerically stable form.
-	const float cosine = clamp(dot(axis1, axis2), -1.0, 1.0);
-	const float sharpnessMin = min(sharpness1, sharpness2);
-	const float sharpnessRatio = sharpnessMin / max(max(sharpness1, sharpness2), FLT_MIN);
-	const float logAmplitude = 2.0 * sharpnessMin * (cosine - 1.0) / (sqrt(2.0 * sharpnessRatio * cosine + sharpnessRatio * sharpnessRatio + 1.0) + sharpnessRatio + 1.0);
+	const float sharpnessSum = sharpness1 + sharpness2;
+	const float3 d = axis1 - axis2;
+	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability for axis1 \approx axis2.
+	const float s = sharpness1 * sharpness2 * len2; // Must be equal or less than sharpnessSum * sharpnessSum.
+	const float logAmplitude = -s / max(sharpnessSum + sqrt(max(sharpnessSum * sharpnessSum - s, 0.0)), FLT_MIN); // The numerical error of sqrt(sharpnessSum * sharpnessSum - s) is small compared to sharpnessSum.
 
 	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logAmplitude };
-
 	return result;
 }
 
-// Approximate product integral.
+// Approximate product integral of two SGs.
 // [Iwasaki et al. 2012, "Interactive Bi-scale Editing of Highly Glossy Materials"].
-float SGApproxProductIntegral(const SGLobe sg1, const SGLobe sg2)
+float SGApproxProductIntegral(const float3 axis1, const float sharpness1, const float3 axis2, const float sharpness2)
 {
-	const float sharpnessSum = sg1.sharpness + sg2.sharpness;
-	const float sharpness = sg1.sharpness * sg2.sharpness / sharpnessSum;
-
-	return 2.0 * M_PI * SGEvaluate(sg1.axis, sg2.axis, sharpness, sg1.logAmplitude + sg2.logAmplitude) / sharpnessSum;
+	const float sharpnessSum = sharpness1 + sharpness2;
+	const float sharpness = sharpness1 * sharpness2 / sharpnessSum;
+	return 2.0 * M_PI * SGEvaluate(axis1, axis2, sharpness) / sharpnessSum;
 }
 
 // Approximate hemispherical integral of an SG / 2pi.
@@ -82,7 +83,6 @@ float SGHemisphericalIntegralOverTwoPi(const float cosine, const float sharpness
 	// Lower hemispherical integral: 2pi*e*(1 - e)/sharpness.
 	// Since this function returns the integral divided by 2pi, 2pi is eliminated from the code.
 	const float e = exp(-sharpness);
-
 	return lerp(e, 1.0, lerpFactor) * expm1_over_x(-sharpness);
 }
 
@@ -107,7 +107,6 @@ float VMFHemisphericalIntegral(const float cosine, const float sharpness)
 
 	// Interpolation between upper and lower hemispherical integrals .
 	const float e = exp(-sharpness);
-
 	return lerp(e, 1.0, lerpFactor) / (e + 1.0);
 }
 
@@ -186,7 +185,6 @@ float SGClampedCosineProductIntegralOverPi2024(const float cosine, const float s
 	// Interpolation between lower and upper hemispherical integrals.
 	const float lowerIntegral = LowerSGClampedCosineIntegralOverTwoPi(sharpness);
 	const float upperIntegral = UpperSGClampedCosineIntegralOverTwoPi(sharpness);
-
 	return 2.0 * lerp(lowerIntegral, upperIntegral, lerpFactor);
 }
 
@@ -239,7 +237,6 @@ float VMFSharpnessToAxisLength(const float sharpness)
 	const float theta = atan2(c, b) / 3.0;
 	const float SQRT3 = 1.7320508075688772935274463415059; // = sqrt(3).
 	const float d = sin(theta) * SQRT3 - cos(theta);
-
 	return (sharpness > 0x1.0p25) ? 1.0 : sqrt(1.0 + a * a) * d + a;
 }
 
