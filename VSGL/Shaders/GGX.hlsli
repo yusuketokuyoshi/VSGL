@@ -16,9 +16,9 @@ float SGGX(const float3 m, const float2 roughness)
 // Symmetric GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
 float SGGX(const float3 m, const float2x2 roughnessMat)
 {
-	const float det = max(determinant(roughnessMat), FLT_MIN); // TODO: Use Kahan's algorithm for precise determinant. [https://pharr.org/matt/blog/2019/11/03/difference-of-floats]
+	const float det = max(determinant(roughnessMat), FLT_MIN); // TODO: Use Kahan's algorithm for precise determinant [https://pharr.org/matt/blog/2019/11/03/difference-of-floats].
 	const float2x2 roughnessMatAdj = { roughnessMat._22, -roughnessMat._12, -roughnessMat._21, roughnessMat._11 };
-	const float length2 = dot(m.xy, mul(roughnessMatAdj, m.xy)) / det + m.z * m.z; // TODO: Use Kahan's algorithm for precise mul and dot. [https://pharr.org/matt/blog/2019/11/03/difference-of-floatshttps://pharr.org/matt/blog/2019/11/03/difference-of-floats]
+	const float length2 = dot(m.xy, mul(roughnessMatAdj, m.xy)) / det + m.z * m.z; // TODO: Use Kahan's algorithm for precise mul and dot [https://pharr.org/matt/blog/2019/11/03/difference-of-floatshttps://pharr.org/matt/blog/2019/11/03/difference-of-floats].
 
 	return 1.0 / (M_PI * sqrt(det) * (length2 * length2));
 }
