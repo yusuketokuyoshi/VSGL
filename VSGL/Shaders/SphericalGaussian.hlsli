@@ -39,12 +39,16 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 	const float3 axis = axis1 * sharpness1 + axis2 * sharpness2;
 	const float sharpness = length(axis);
 
-	// Compute logAmplitude = sharpness - sharpness1 - sharpness2 using a numerically stable form.
-	const float sharpnessSum = sharpness1 + sharpness2;
+	// Compute logAmplitude = sharpness - (sharpness1 + sharpness2).
+    // Since sharpness - sharpness1 - sharpness2 in floating point arithmetic can produce a significant numerical error, we use a numerically stable form derived by
+    // logAmplitude = sharpness - (sharpness1 + sharpness2)
+    //              = (||axis1 * sharpness1 + axis2 * sharpness2||^2 - (sharpness1 + sharpness2)^2) / (sharpness + sharpness1 + sharpness2)
+    //              = (sharpness1^2 + 2 * sharpness1 * sharpness2 * dot(axis1, axis2) + sharpness2^2 - (sharpness1^2 + 2 * sharpness1 * sharpness2 + sharpness2^2) / (sharpness + sharpness1 + sharpness2)
+    //              = 2 * sharpness1 * sharpness2 * (dot(axis1, axis2) - 1) / (sharpness + sharpness1 + sharpness2)
+    //              = -sharpness1 * sharpness2 * ||axis1 - axis2||^2 / (sharpness + sharpness1 + sharpness2).
 	const float3 d = axis1 - axis2;
-	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability for axis1 \approx axis2.
-	const float s = sharpness1 * sharpness2 * len2; // Must be equal or less than sharpnessSum * sharpnessSum.
-	const float logAmplitude = -s / max(sharpnessSum + sqrt(max(sharpnessSum * sharpnessSum - s, 0.0)), FLT_MIN); // The numerical error of sqrt(sharpnessSum * sharpnessSum - s) is small compared to sharpnessSum.
+	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability whren axis1 \approx axis2.
+	const float logAmplitude = -sharpness1 * sharpness2 * len2 / max(sharpness + sharpness1 + sharpness2, FLT_MIN);
 
 	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logAmplitude };
 	return result;
