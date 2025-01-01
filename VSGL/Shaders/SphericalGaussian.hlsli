@@ -40,12 +40,12 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
 	const float sharpness = length(axis);
 
 	// Compute logAmplitude = sharpness - (sharpness1 + sharpness2).
-    // Since sharpness - sharpness1 - sharpness2 in floating point arithmetic can produce a significant numerical error, we use a numerically stable form derived by
-    // logAmplitude = sharpness - (sharpness1 + sharpness2)
-    //              = (||axis1 * sharpness1 + axis2 * sharpness2||^2 - (sharpness1 + sharpness2)^2) / (sharpness + sharpness1 + sharpness2)
-    //              = (sharpness1^2 + 2 * sharpness1 * sharpness2 * dot(axis1, axis2) + sharpness2^2 - (sharpness1^2 + 2 * sharpness1 * sharpness2 + sharpness2^2) / (sharpness + sharpness1 + sharpness2)
-    //              = 2 * sharpness1 * sharpness2 * (dot(axis1, axis2) - 1) / (sharpness + sharpness1 + sharpness2)
-    //              = -sharpness1 * sharpness2 * ||axis1 - axis2||^2 / (sharpness + sharpness1 + sharpness2).
+	// Since sharpness - sharpness1 - sharpness2 in floating point arithmetic can produce a significant numerical error, we use a numerically stable form derived by
+	// logAmplitude = sharpness - (sharpness1 + sharpness2)
+	//              = (||axis1 * sharpness1 + axis2 * sharpness2||^2 - (sharpness1 + sharpness2)^2) / (sharpness + sharpness1 + sharpness2)
+	//              = (sharpness1^2 + 2 * sharpness1 * sharpness2 * dot(axis1, axis2) + sharpness2^2 - (sharpness1^2 + 2 * sharpness1 * sharpness2 + sharpness2^2) / (sharpness + sharpness1 + sharpness2)
+	//              = 2 * sharpness1 * sharpness2 * (dot(axis1, axis2) - 1) / (sharpness + sharpness1 + sharpness2)
+	//              = -sharpness1 * sharpness2 * ||axis1 - axis2||^2 / (sharpness + sharpness1 + sharpness2).
 	const float3 d = axis1 - axis2;
 	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability when axis1 \approx axis2.
 	const float logAmplitude = -sharpness1 * sharpness2 * len2 / max(sharpness + sharpness1 + sharpness2, FLT_MIN);
