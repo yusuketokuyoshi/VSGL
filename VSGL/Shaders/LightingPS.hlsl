@@ -96,8 +96,7 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		const float3 lightDir = lightVec * rsqrt(squaredDistance);
 
 		// Clamp the variance for the numerical stability.
-		const float VARIANCE_THRESHOLD = 0x1.0p-31;
-		const float variance = max(sgLight.variance, VARIANCE_THRESHOLD * squaredDistance);
+		const float variance = max(sgLight.variance, squaredDistance / SGLIGHT_SHARPNESS_MAX);
 
 		// Compute the maximum emissive radiance of the SG light.
 		// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by sgLight.intensity.
