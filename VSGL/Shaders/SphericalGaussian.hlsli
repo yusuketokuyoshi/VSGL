@@ -234,13 +234,12 @@ float VMFSharpnessToAxisLength(const float sharpness)
 	// For x in [0, 1] and s in [0, infty), this equation has only a single solution.
 	// [Xu and Wang 2015 "Realtime Rendering Glossy to Glossy Reflections in Screen Space"]
 	// We solve this cubic equation in a numerically stable manner.
-	// [Peters, C. 2016. "How to solve a cubic equation, revisited". http://momentsingraphics.de/?p=105]
+	// [Peters, C. 2016 "How to solve a cubic equation, revisited" https://momentsingraphics.de/CubicRoots.html]
 	const float a = sharpness / 3.0;
 	const float b = a * a * a;
 	const float c = sqrt(1.0 + 3.0 * (a * a) * (1.0 + a * a));
 	const float theta = atan2(c, b) / 3.0;
-	const float SQRT3 = 1.7320508075688772935274463415059; // = sqrt(3).
-	const float d = sin(theta) * SQRT3 - cos(theta);
+	const float d = -2.0 * sin(M_PI / 6.0 - theta); // = sin(theta) * sqrt(3) - cos(theta).
 	return (sharpness > 0x1.0p25) ? 1.0 : sqrt(1.0 + a * a) * d + a;
 }
 
