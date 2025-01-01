@@ -96,9 +96,9 @@ SGLight GenerateVSGL(const float4 positionAvg, const float3 axisAvg, const float
 	const float3 axis = axisLength != 0.0 ? axisAvg / axisLength : float3(0.0, 0.0, 1.0);
 
 	// Estimate the SG sharpness using the Banerjee's method [2005].
-	// We also clamp the sharpness using a large value for the numerical stability.
-	const float SHARPNESS_MAX = 0x1.0p+31;
-	const float sharpness = min(VMFAxisLengthToSharpness(axisLength), SHARPNESS_MAX);
+	// We also clamp the sharpness using a large value to avoid overflow.
+	const float SHARPNESS_MAX = 0x1.0p+62; // Must be smaller than sqrt(FLT_MAX/4).
+	const float sharpness = min(VMFAxisLengthToSharpness(saturate(axisLength)), SHARPNESS_MAX);
 
 	// Approximate the distribution of VPL positions with a Gaussian.
 	// Since we assume that the VPLs are distributed on a 2D plane, we divide the total variance by two.
