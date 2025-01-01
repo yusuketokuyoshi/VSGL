@@ -47,7 +47,7 @@ SGLobe SGProduct(const float3 axis1, const float sharpness1, const float3 axis2,
     //              = 2 * sharpness1 * sharpness2 * (dot(axis1, axis2) - 1) / (sharpness + sharpness1 + sharpness2)
     //              = -sharpness1 * sharpness2 * ||axis1 - axis2||^2 / (sharpness + sharpness1 + sharpness2).
 	const float3 d = axis1 - axis2;
-	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability whren axis1 \approx axis2.
+	const float len2 = dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability when axis1 \approx axis2.
 	const float logAmplitude = -sharpness1 * sharpness2 * len2 / max(sharpness + sharpness1 + sharpness2, FLT_MIN);
 
 	const SGLobe result = { axis / max(sharpness, FLT_MIN), sharpness, logAmplitude };
