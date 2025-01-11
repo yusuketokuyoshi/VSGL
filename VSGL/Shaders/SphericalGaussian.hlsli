@@ -14,6 +14,8 @@ struct SGLobe
 
 float SGEvaluate(const float3 dir, const float3 axis, const float sharpness)
 {
+	// [Tokuyoshi 2025 "A Numerically Stable Implementation of the von Mises-Fisher Distribution on S^2"]
+	// https://yusuketokuyoshi.com/papers/2025/A_Numerically_Stable_Implementation_of_the_von_Mises-Fisher_Distribution_on_S2.pdf
 	const float3 d = dir - axis;
 	const float len2 = dot(d, d); // -0.5 * len2 = dot(dir, axis) - 1. Using len2 improves the numerical stability for dir \approx axis.
 	return exp(-0.5 * sharpness * len2);
