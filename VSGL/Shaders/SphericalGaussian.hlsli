@@ -149,7 +149,7 @@ float UpperSGClampedCosineIntegralOverTwoPi(const float sharpness)
 		return (((((((-1.0 / 362880.0) * sharpness + 1.0 / 40320.0) * sharpness - 1.0 / 5040.0) * sharpness + 1.0 / 720.0) * sharpness - 1.0 / 120.0) * sharpness + 1.0 / 24.0) * sharpness - 1.0 / 6.0) * sharpness + 0.5;
 	}
 
-	return (expm1(-sharpness) + sharpness) / (sharpness * sharpness);
+	return (1.0 - expm1_over_x(-sharpness)) / sharpness;
 }
 
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 6]
@@ -164,7 +164,7 @@ float LowerSGClampedCosineIntegralOverTwoPi(const float sharpness)
 		return e * (((((((((1.0 / 403200.0) * sharpness - 1.0 / 45360.0) * sharpness + 1.0 / 5760.0) * sharpness - 1.0 / 840.0) * sharpness + 1.0 / 144.0) * sharpness - 1.0 / 30.0) * sharpness + 1.0 / 8.0) * sharpness - 1.0 / 3.0) * sharpness + 0.5);
 	}
 
-	return e * (-expm1(-sharpness) - sharpness * e) / (sharpness * sharpness);
+	return e * (expm1_over_x(-sharpness) - e) / sharpness;
 }
 
 // Approximate product integral of an SG and clamped cosine / pi.
