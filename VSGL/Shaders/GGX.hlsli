@@ -38,7 +38,7 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 
 // A dominant visible mirocafet normal for the GGX NDF.
 // This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
-float3 DominantVisibleGGXNormal(const float3 wi, const float2 roughness)
+float3 GGXDominantVisibleNormal(const float3 wi, const float2 roughness)
 {
 	return normalize(float3(roughness * roughness * wi.xy, wi.z + length(float3(roughness * wi.xy, wi.z))));
 }

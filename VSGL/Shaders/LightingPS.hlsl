@@ -82,7 +82,7 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 	const float roughnessMax2 = max(roughness2.x, roughness2.y);
 	const float reflecSharpness = (1.0 - roughnessMax2) / max(2.0f * roughnessMax2, FLT_MIN);
 #if 1
-	const float3 dominantNormal = mul(DominantVisibleGGXNormal(wi, roughness), tangentFrame);
+	const float3 dominantNormal = mul(GGXDominantVisibleNormal(wi, roughness), tangentFrame);
 #else
 	const float3 dominantNormal = normal; // Used in the paper.
 #endif
