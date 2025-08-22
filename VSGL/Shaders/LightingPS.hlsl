@@ -75,13 +75,18 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 	const float detJJ4 = 1.0 / (4.0 * wi.z * wi.z); // = 4 * determiant(JJ^T).
 
 	// Preprocess for the lobe visibility.
-	// Approximate the reflection lobe with an SG whose axis is the perfect specular reflection vector.
+	// Approximate the reflection lobe with an SG whose axis is a dominant reflection vector.
 	// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
 	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
-	// TODO: Investigate a more dominant reflection vector for rough surfaces than the perfect specular reflection vector.
+	// Unlike the paper, we use a dominant visible microfacet normal instead of the shading normal to obtain the dominant reflection vector.
 	const float roughnessMax2 = max(roughness2.x, roughness2.y);
 	const float reflecSharpness = (1.0 - roughnessMax2) / max(2.0f * roughnessMax2, FLT_MIN);
-	const float3 reflecVec = reflect(-viewDir, normal) * reflecSharpness;
+#if 1
+	const float3 dominantNormal = mul(DominantVisibleGGXNormal(wi, roughness), tangentFrame);
+#else
+	const float3 dominantNormal = normal; // Used in the paper.
+#endif
+	const float3 reflecVec = reflect(-viewDir, dominantNormal) * reflecSharpness;
 #endif
 
 	float3 result = 0.0;
@@ -131,9 +136,6 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 
 		// Glossy SG lighting.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5]
-		const float3 prodVec = reflecVec + lightLobe.axis * lightLobe.sharpness; // Axis of the SG product lobe.
-		const float prodSharpness = length(prodVec);
-		const float3 prodDir = prodVec / prodSharpness;
 		const float lightLobeVariance = 1.0 / lightLobe.sharpness;
 		const float2x2 filteredProjRoughnessMat = float2x2(projRoughness2.x, 0.0, 0.0, projRoughness2.y) + 2.0 * lightLobeVariance * jjMat;
 
@@ -152,6 +154,9 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		const float lobe = SGGXReflectionPDF(wi, halfvec, filteredRoughnessMat);
 
 		// Visibility of the SG light in the upper hemisphere.
+		const float3 prodVec = reflecVec + lightLobe.axis * lightLobe.sharpness; // Axis of the SG product lobe.
+		const float prodSharpness = length(prodVec);
+		const float3 prodDir = prodVec / prodSharpness;
 		const float visibility = VMFHemisphericalIntegral(dot(prodDir, normal), prodSharpness);
 
 		// Eq. 12 of the paper.

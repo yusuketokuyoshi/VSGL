@@ -36,6 +36,13 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 	return (m.z > 0.0) ? SGGX(m, roughnessMat) : 0.0;
 }
 
+// A dominant visible mirocafet normal for the GGX NDF.
+// This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
+float3 DominantVisibleGGXNormal(const float3 wi, const float2 roughness)
+{
+	return normalize(float3(roughness * roughness * wi.xy, wi.z + length(float3(roughness * wi.xy, wi.z))));
+}
+
 // Reflection lobe based on the symmetric GGX VNDF.
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5.2]
 float SGGXReflectionPDF(const float3 wi, const float3 m, const float2x2 roughnessMat)
