@@ -158,7 +158,6 @@ void main(const uint2 threadID : SV_DispatchThreadID, const uint groupIndex : SV
 #elif defined(SPECULAR_VSGL)
 			const float4 specular = specularBuffer[texelID];
 			const float roughness = PerceptualRoughnessToAlpha(specular.w);
-			const float roughness2 = roughness * roughness;
 
 			// Tangent frame assuming an isotropic roughness.
 			// TODO: Use the same tangent frame as lighting to support ansiotropic roughness.
@@ -168,7 +167,7 @@ void main(const uint2 threadID : SV_DispatchThreadID, const uint groupIndex : SV
 			// Then, we convert the vMF into an average of directions [Banerjee et al. 2005].
 			// If you prefer the performance more than the quality, you can use the Toksvig's method [2005] instead of the Banerjee et al.'s method.
 			const float3 wi = mul(tangentFrame, -direction);
-			const SGLobe sg = SGReflectionLobe(wi, roughness2);
+			const SGLobe sg = SGReflectionLobe(wi, roughness);
 			const float3 axis = mul(sg.axis, tangentFrame);
 			const float axisLength = VMFSharpnessToAxisLength(sg.sharpness);
 			const float3 power = specular.xyz * jacobian;
