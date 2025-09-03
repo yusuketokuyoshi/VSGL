@@ -98,4 +98,15 @@ float erfc(const float x)
 	return 1.0 - erf(x);
 }
 
+// [Duff et al. 2017. "Building an Orthonormal Basis, Revisited", JCGT 6, 1, pp.1-8]
+float3x3 BuildONBDuff(const float3 n)
+{
+	const float s = n.z >= 0.0f ? 1.0f : -1.0f;
+	const float c = -1.0f / (s + n.z);
+	const float b = n.x * n.y * c;
+	const float3 b1 = { 1.0f + s * n.x * n.x * c, s * b, -s * n.x };
+	const float3 b2 = { b, s + n.y * n.y * c, -n.y };
+	return float3x3(b1, b2, n);
+}
+
 #endif

@@ -160,14 +160,18 @@ void main(const uint2 threadID : SV_DispatchThreadID, const uint groupIndex : SV
 			const float roughness = PerceptualRoughnessToAlpha(specular.w);
 			const float roughness2 = roughness * roughness;
 
-			// For the specular lobe, we approximate the VNDF-based reflection PDF into a normalized SG (a.k.a. vMF distribution).
+			// Tangent frame assuming an isotropic roughness.
+			// TODO: Use the same tangent frame as lighting to support ansiotropic roughness.
+			const float3x3 tangentFrame = BuildONBDuff(normal);
+
+			// We approximate the normalized specular lobe into a normalized SG (a.k.a. vMF distribution).
 			// Then, we convert the vMF into an average of directions [Banerjee et al. 2005].
 			// If you prefer the performance more than the quality, you can use the Toksvig's method [2005] instead of the Banerjee et al.'s method.
-			const SGLobe sg = SGReflectionLobe(-direction, normal, roughness2);
-			const float3 axis = sg.axis;
+			const float3 wi = mul(tangentFrame, -direction);
+			const SGLobe sg = SGReflectionLobe(wi, roughness2);
+			const float3 axis = mul(sg.axis, tangentFrame);
 			const float axisLength = VMFSharpnessToAxisLength(sg.sharpness);
-			const float lobeOverPDF = SmithGGXLobeOverPDF(-direction, axis, normal, roughness2); // Fresnel = 1 in this implementation.
-			const float3 power = specular.xyz * (lobeOverPDF * jacobian);
+			const float3 power = specular.xyz * jacobian;
 #else
 #error
 #endif

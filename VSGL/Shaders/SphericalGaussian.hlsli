@@ -4,6 +4,7 @@
 #include "Math.hlsli"
 #include "NumericLimits.hlsli"
 #include "MathConstants.hlsli"
+#include "GGX.hlsli"
 
 struct SGLobe
 {
@@ -201,22 +202,26 @@ float SGClampedCosineProductIntegral2024(const float cosine, const float sharpne
 	return M_PI * SGClampedCosineProductIntegralOverPi2024(cosine, sharpness);
 }
 
-// Approximate the reflection lobe with an SG lobe for microfacet BRDFs.
-// [Wang et al. 2009 "All-Frequency Rendering with Dynamic, Spatially-Varying Reflectance"]
-SGLobe SGReflectionLobe(const float3 dir, const float3 normal, const float roughness2)
+// Approximate the tangent-space reflection lobe with an SG for the GGX microfacet BRDF.
+SGLobe SGReflectionLobe(const float3 wi, const float roughness2)
 {
 	// Compute SG sharpness for the NDF.
 	// Unlike Wang et al. [2009], we use the following equation based on the Appendix of [Tokuyoshi and Harada 2019 "Hierarchical Russian Roulette for Vertex Connections"].
 	const float sharpnessNDF = 2.0 / roughness2 - 2.0;
 
-	// Approximate the reflection lobe axis using the peak of the NDF (i.e., the perfectly specular reflection direction).
-	const float3 axis = reflect(-dir, normal);
+	// Approximate the reflection lobe axis.
+	// Unlike Wang et al. [2009], we use a dominant visible normal instead of the shading normal to obtain a dominant reflection direction for rough surfaces.
+	const float3 dominantNormal = GGXDominantVisibleNormal(wi, roughness2);
+	const float3 axis = reflect(-wi, dominantNormal);
 
-	// Jacobian of the transformation from halfvectors to reflection vectors.
-	const float jacobian = 4.0 * abs(dot(dir, normal));
+	// Jacobian for the transformation between halfvectors and reflection vectors.
+	// This implementation assumes that `axis`, `dir`, and normal are on an indential great circle (i.e., `roughness2` is isotropic).
+	// For an arbitrary lobe axis, please see the supplementary document of our paper.
+	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)", Section 1] 
+	const float jacobian = dominantNormal.z / (4.0 * abs(dot(wi, dominantNormal)));
 
 	// Compute sharpness for the reflection lobe.
-	const float sharpness = sharpnessNDF / jacobian;
+	const float sharpness = sharpnessNDF * jacobian;
 
 	const SGLobe result = { axis, sharpness, 0.0 };
 	return result;
