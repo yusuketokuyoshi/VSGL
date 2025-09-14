@@ -40,7 +40,12 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 // This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
 float3 GGXDominantVisibleNormal(const float3 wi, const float2 roughness)
 {
-	return normalize(float3(roughness * roughness * wi.xy, wi.z + length(float3(roughness * wi.xy, wi.z))));
+	const float2 v = roughness * wi.xy;
+	const float len2 = dot(v, v);
+	const float t = sqrt(len2 + wi.z * wi.z);
+	const float z = select(wi.z >= 0.0f, t + wi.z, len2 / (t - wi.z));
+
+	return normalize(float3(roughness * roughness * wi.xy, z));
 }
 
 // Reflection lobe based on the symmetric GGX VNDF.
@@ -48,6 +53,14 @@ float3 GGXDominantVisibleNormal(const float3 wi, const float2 roughness)
 float SGGXReflectionPDF(const float3 wi, const float3 m, const float2x2 roughnessMat)
 {
 	return SGGX(m, roughnessMat) / (4.0 * sqrt(dot(wi.xy, mul(roughnessMat, wi.xy)) + wi.z * wi.z)); // TODO: Use Kahan's algorithm for precise mul and dot. [https://pharr.org/matt/blog/2019/11/03/difference-of-floats]
+}
+
+// Convert from perceptual roughness to GGX/Beckmann alpha roughness.
+// In this implementation, we use the square mapping similar to many game engines.
+float PerceptualRoughnessToAlpha(const float perceptualRoughness)
+{
+	const float ALPHA_MIN = 0x1.0p-31f; // Threshold to avoid underflow/overflow for single precision. This value must be larger than sqrt(sqrt(2^-126)).
+	return max(perceptualRoughness * perceptualRoughness, ALPHA_MIN);
 }
 
 #endif

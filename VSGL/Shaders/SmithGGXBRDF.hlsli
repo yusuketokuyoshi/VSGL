@@ -25,11 +25,4 @@ float SmithGGXLobeOverUnnormalizedNDF(const float3 incomingDir, const float3 out
 	return saturate(zo) / max(2.0 * M_PI * roughness2 * (si * abs(zo) + so * abs(zi)), FLT_MIN);
 }
 
-// Convert from perceptual roughness to GGX/Beckmann alpha roughness.
-// In this implementation, we use the square mapping similar to many game engines.
-float PerceptualRoughnessToAlpha(const float perceptualRoughness)
-{
-	return perceptualRoughness * perceptualRoughness;
-}
-
 #endif
