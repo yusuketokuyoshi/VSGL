@@ -41,7 +41,7 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 float3 GGXDominantVisibleNormal(const float3 wi, const float2 roughness)
 {
 	// Numerically stable implementation for wi.x < 0
-	// Similar manner to Tokuyoshi and Eto 2023 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
+	// Similar manner to Tokuyoshi and Eto 2024 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
 	const float2 v = roughness * wi.xy;
 	const float len2 = dot(v, v);
 	const float t = sqrt(len2 + wi.z * wi.z);
