@@ -66,13 +66,10 @@ float SGApproxProductIntegral(const float3 axis1, const float sharpness1, const 
 	return 2.0 * M_PI * SGEvaluate(axis1, axis2, sharpness) / sharpnessSum;
 }
 
-// Approximate hemispherical integral of an SG / 2pi.
-// The parameter "cosine" is the cosine of the angle between the SG axis and the pole axis of the hemisphere.
-// [Tokuyoshi 2022 "Accurate Diffuse Lighting from Spherical Gaussian Lights"]
-float SGHemisphericalIntegralOverTwoPi(const float cosine, const float sharpness)
+// Interpolation factor for the hemispherical integral of an SG.
+// [Tokuyoshi 2022 "Accurate Diffuse Lighting from Spherical Gaussian Lights", Eq. (1)]
+float SGNormalizedHemisphericalIntegral(const float cosine, const float sharpness)
 {
-	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
-	// First we compute the sigmoid-form interpolation factor.
 	// Instead of a logistic approximation [Meder and Bruderlin 2018 "Hemispherical Gausians for Accurate Lighting Integration"],
 	// we approximate the interpolation factor using the CDF of a Gaussian (i.e. normalized error function).
 
@@ -82,8 +79,19 @@ float SGHemisphericalIntegralOverTwoPi(const float cosine, const float sharpness
 	const float C = 7.2216687798956709087860872386955;
 	const float steepness = sharpness * sqrt((0.5 * sharpness + A) / ((sharpness + B) * sharpness + C));
 
-	// Our approximation for the normalized hemispherical integral.
-	const float lerpFactor = 0.5 + 0.5 * (erf(steepness * clamp(cosine, -1.0, 1.0)) / erf(steepness));
+	// Our erf approximation for the normalized hemispherical integral.
+	return saturate(0.5 + 0.5 * (erf(steepness * clamp(cosine, -1.0, 1.0)) / erf(steepness)));
+}
+
+// Approximate hemispherical integral of an SG / 2pi.
+// The parameter "cosine" is the cosine of the angle between the SG axis and the pole axis of the hemisphere.
+// [Tokuyoshi 2022 "Accurate Diffuse Lighting from Spherical Gaussian Lights"]
+float SGHemisphericalIntegralOverTwoPi(const float cosine, const float sharpness)
+{
+	// This function approximately computes the integral using an interpolation between the upper hemispherical integral and lower hemispherical integral.
+
+	// First we compute the sigmoid-form interpolation factor.
+	const float lerpFactor = SGNormalizedHemisphericalIntegral(cosine, sharpness);
 
 	// Interpolation between the upper hemispherical integral and lower hemispherical integral.
 	// Upper hemispherical integral: 2pi*(1 - e)/sharpness.
@@ -106,11 +114,7 @@ float SGHemisphericalIntegral(const float cosine, const float sharpness)
 float VMFHemisphericalIntegral(const float cosine, const float sharpness)
 {
 	// Interpolation factor [Tokuyoshi 2022].
-	const float A = 0.6517328826907056171791055021459;
-	const float B = 1.3418280033141287699294252888649;
-	const float C = 7.2216687798956709087860872386955;
-	const float steepness = sharpness * sqrt((0.5 * sharpness + A) / ((sharpness + B) * sharpness + C));
-	const float lerpFactor = saturate(0.5 + 0.5 * (erf(steepness * clamp(cosine, -1.0, 1.0)) / erf(steepness)));
+	const float lerpFactor = SGNormalizedHemisphericalIntegral(cosine, sharpness);
 
 	// Interpolation between upper and lower hemispherical integrals .
 	const float e = exp(-sharpness);
