@@ -1,10 +1,12 @@
-#include "GraphicsCore.h"
-#include "BufferManager.h"
-#include "CommandContext.h"
-#include "Renderer.h"
 #include "MyRenderer.hpp"
 #include "Scene.hpp"
 #include "Shaders/VSGLGenerationSetting.h"
+
+#include "BufferManager.h"
+#include "CommandContext.h"
+#include "GraphicsCore.h"
+#include "Renderer.h"
+
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -12,19 +14,19 @@
 #include <limits>
 
 // Compiled shaders
-#include "CompiledShaders/DepthVS.h"
-#include "CompiledShaders/DepthCutoutVS.h"
 #include "CompiledShaders/DepthCutoutPS.h"
-#include "CompiledShaders/ReflectiveShadowMapVS.h"
-#include "CompiledShaders/ReflectiveShadowMapPS.h"
+#include "CompiledShaders/DepthCutoutVS.h"
+#include "CompiledShaders/DepthVS.h"
+#include "CompiledShaders/LightingCutoutPS.h"
+#include "CompiledShaders/LightingPS.h"
+#include "CompiledShaders/LightingVS.h"
+#include "CompiledShaders/PreviousLightingCutoutPS.h"
+#include "CompiledShaders/PreviousLightingPS.h"
 #include "CompiledShaders/ReflectiveShadowMapCutoutPS.h"
+#include "CompiledShaders/ReflectiveShadowMapPS.h"
+#include "CompiledShaders/ReflectiveShadowMapVS.h"
 #include "CompiledShaders/VSGLGenerationDiffuseCS.h"
 #include "CompiledShaders/VSGLGenerationSpecularCS.h"
-#include "CompiledShaders/LightingVS.h"
-#include "CompiledShaders/LightingPS.h"
-#include "CompiledShaders/LightingCutoutPS.h"
-#include "CompiledShaders/PreviousLightingPS.h"
-#include "CompiledShaders/PreviousLightingCutoutPS.h"
 
 namespace
 {

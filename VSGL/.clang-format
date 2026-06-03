@@ -23,4 +23,14 @@ BraceWrapping:
  BeforeWhile: true
 PointerAlignment: Left
 QualifierAlignment: Left
-SortIncludes: Never
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+IncludeCategories:
+ - Regex: '^"(.*)\.(h|hpp|hxx)"$'
+   Priority: 1
+ - Regex: '^"([^.]*)\.([^.]*)"$'
+   Priority: 2
+ - Regex: '^<([^.]*)\/([^.]*)>'
+   Priority: 3
+ - Regex: '^<([^.]*)>$'
+   Priority: 4

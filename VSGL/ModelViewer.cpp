@@ -1,9 +1,11 @@
-#include "CommandContext.h"
-#include "PostEffects.h"
-#include "GameInput.h"
-#include "Renderer.h"
 #include "MyRenderer.hpp"
 #include "Scene.hpp"
+
+#include "CommandContext.h"
+#include "GameInput.h"
+#include "PostEffects.h"
+#include "Renderer.h"
+
 #include <memory>
 
 namespace

@@ -1,8 +1,11 @@
 #pragma once
 
-#include "ModelH3D.h"
-#include "Camera.h"
+// Need to include CameraController.h first.
 #include "CameraController.h"
+
+#include "Camera.h"
+#include "ModelH3D.h"
+
 #include <cstdint>
 #include <memory>
 
