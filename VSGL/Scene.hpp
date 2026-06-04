@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <memory>
 
+namespace vsgl
+{
 class Scene
 {
   public:
@@ -30,3 +32,4 @@ class Scene
 	std::unique_ptr<CameraController> m_spotlightController;
 	float m_spotlightIntensity = 0.0f;
 };
+} // namespace vsgl

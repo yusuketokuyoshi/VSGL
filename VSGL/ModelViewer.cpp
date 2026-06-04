@@ -8,6 +8,8 @@
 
 #include <memory>
 
+namespace vsgl
+{
 namespace
 {
 ExpVar g_spotLightIntensity{"Application/Light Intensity", 4000000.0f};
@@ -19,8 +21,11 @@ class ModelViewer : public GameCore::IGameApp
 
   public:
 	void Startup() override;
+
 	void Cleanup() override;
+
 	void Update(const float deltaT) override;
+
 	void RenderScene() override;
 };
 
@@ -84,9 +89,10 @@ void ModelViewer::RenderScene()
 	context.Finish();
 }
 } // namespace
+} // namespace vsgl
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/, _In_ int nShowCmd)
 {
-	ModelViewer modelViewer;
+	vsgl::ModelViewer modelViewer;
 	return GameCore::RunApplication(modelViewer, L"ModelViewer", hInstance, nShowCmd);
 }

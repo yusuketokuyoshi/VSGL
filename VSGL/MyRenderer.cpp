@@ -28,6 +28,8 @@
 #include "CompiledShaders/VSGLGenerationDiffuseCS.h"
 #include "CompiledShaders/VSGLGenerationSpecularCS.h"
 
+namespace vsgl
+{
 namespace
 {
 BoolVar s_previousSGLighting{"SG lighting/Previous method", false};
@@ -517,3 +519,4 @@ void MyRenderer::Render(GraphicsContext& context, const Scene& scene)
 	DepthPass(context, scene);
 	LightingPass(context, scene);
 }
+} // namespace vsgl
