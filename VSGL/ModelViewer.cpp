@@ -18,6 +18,7 @@ class ModelViewer : public GameCore::IGameApp
 {
   private:
 	Scene m_scene;
+	MyRenderer m_renderer;
 
   public:
 	void Startup() override;
@@ -32,7 +33,7 @@ class ModelViewer : public GameCore::IGameApp
 void ModelViewer::Startup()
 {
 	Renderer::Initialize();
-	MyRenderer::Initialize();
+	m_renderer.Initialize();
 	PostEffects::EnableAdaptation = false;
 
 	ASSERT(m_scene.m_model.Load(L"../Sponza/sponza.h3d"), "Failed to load model");
@@ -62,7 +63,7 @@ void ModelViewer::Startup()
 void ModelViewer::Cleanup()
 {
 	m_scene.Clear();
-	MyRenderer::Shutdown();
+	m_renderer.Shutdown();
 	Renderer::Shutdown();
 }
 
@@ -85,7 +86,7 @@ void ModelViewer::Update(const float deltaT)
 void ModelViewer::RenderScene()
 {
 	GraphicsContext& context = GraphicsContext::Begin(L"Rendering");
-	MyRenderer::Render(context, m_scene);
+	m_renderer.Render(context, m_scene);
 	context.Finish();
 }
 } // namespace

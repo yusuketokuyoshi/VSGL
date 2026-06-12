@@ -4,7 +4,6 @@
 
 #include "BufferManager.h"
 #include "CommandContext.h"
-#include "GraphicsCore.h"
 #include "Renderer.h"
 
 #include <array>
@@ -32,7 +31,7 @@ namespace vsgl
 {
 namespace
 {
-BoolVar s_previousSGLighting{"SG lighting/Previous method", false};
+BoolVar m_previousSGLighting{"SG lighting/Previous method", false};
 
 enum GFX_ROOT_INDEX
 {
@@ -49,31 +48,6 @@ enum VSGL_ROOT_INDEX
 	VSGL_ROOT_INDEX_SRV,
 	VSGL_ROOT_INDEX_UAV,
 };
-
-DepthBuffer s_shadowMap;
-DepthBuffer s_rsmDepthBuffer;
-ColorBuffer s_rsmNormalBuffer;
-ColorBuffer s_rsmDiffuseBuffer;
-ColorBuffer s_rsmSpecularBuffer;
-StructuredBuffer s_sgLightBuffer;
-DescriptorHandle s_lightingDescriptorTable;
-
-RootSignature s_depthRootSig;
-RootSignature s_rsmRootSig;
-RootSignature s_lightingRootSig;
-RootSignature s_vsglRootSig;
-GraphicsPSO s_depthPSO = {L"s_depthPSO"};
-GraphicsPSO s_depthCutoutPSO = {L"s_depthCutoutPSO"};
-GraphicsPSO s_shadowMapPSO = {L"s_shadowMapPSO"};
-GraphicsPSO s_shadowMapCutoutPSO = {L"s_shadowMapCutoutPSO"};
-GraphicsPSO s_reflectiveShadowMapPSO = {L"s_reflectiveShadowMapPSO"};
-GraphicsPSO s_reflectiveShadowMapCutoutPSO = {L"s_reflectiveShadowMapCutoutPSO"};
-GraphicsPSO s_lightingPSO = {L"s_lightingPSO"};
-GraphicsPSO s_lightingCutoutPSO = {L"s_lightingCutoutPSO"};
-GraphicsPSO s_previousLightingPSO = {L"s_previousLightingPSO"};
-GraphicsPSO s_previousLightingCutoutPSO = {L"s_previousLightingCutoutPSO"};
-ComputePSO s_vsglGenerationDiffusePSO = {L"s_vsglGenerationDiffusePSO"};
-ComputePSO s_vsglGenerationSpecularPSO = {L"s_vsglGenerationSpecularPSO"};
 
 void DrawDepth(GraphicsContext& context, const ModelH3D& model)
 {
@@ -125,192 +99,21 @@ void Draw(GraphicsContext& context, const ModelH3D& model)
 		context.DrawIndexed(indexCount, startIndex, static_cast<INT>(baseVertex));
 	}
 }
-
-void ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Reflective Shadow Map", context);
-
-	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
-	const std::array rtvs = {s_rsmNormalBuffer.GetRTV(), s_rsmDiffuseBuffer.GetRTV(), s_rsmSpecularBuffer.GetRTV()};
-
-	context.SetRootSignature(s_rsmRootSig);
-	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-	context.SetViewportAndScissor(0, 0, s_rsmDepthBuffer.GetWidth(), s_rsmDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), s_rsmDepthBuffer.GetDSV());
-	context.SetPipelineState(s_reflectiveShadowMapPSO);
-	Draw(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetPipelineState(s_reflectiveShadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-
-	context.BeginResourceTransition(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.BeginResourceTransition(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-}
-
-void ShadowMapPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Shadow Map", context);
-
-	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
-
-	context.SetRootSignature(s_depthRootSig);
-	context.SetViewportAndScissor(0, 0, s_shadowMap.GetWidth(), s_shadowMap.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDepthStencilTarget(s_shadowMap.GetDSV());
-	context.SetPipelineState(s_shadowMapPSO);
-	DrawDepth(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-		context.SetPipelineState(s_shadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-
-	context.BeginResourceTransition(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-}
-
-void DepthPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Depth", context);
-
-	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
-
-	context.SetRootSignature(s_depthRootSig);
-	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
-	context.SetPipelineState(s_depthPSO);
-	DrawDepth(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-		context.SetPipelineState(s_depthCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-}
-
-void LightingPass(GraphicsContext& context, const Scene& scene)
-{
-	const ScopedTimer profile(L"Lighting", context);
-
-	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
-	context.TransitionResource(s_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
-	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
-
-	alignas(16) struct
-	{
-		XMMATRIX lightViewProj;
-		XMVECTOR cameraPosition;
-		XMFLOAT3 lightPosition;
-		float lightIntensity;
-	} constants;
-
-	constants.lightViewProj = scene.m_spotlight.GetViewProjMatrix();
-	constants.cameraPosition = scene.m_camera.GetPosition();
-	XMStoreFloat3(&constants.lightPosition, scene.m_spotlight.GetPosition());
-	constants.lightIntensity = scene.m_spotlightIntensity;
-
-	context.SetRootSignature(s_lightingRootSig);
-	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
-	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
-	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
-	context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
-	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, s_sgLightBuffer.RootConstantBufferView());
-	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, s_lightingDescriptorTable);
-	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-	context.SetPipelineState(s_previousSGLighting ? s_previousLightingPSO : s_lightingPSO);
-	Draw(context, scene.m_model);
-
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
-	{
-		context.SetPipelineState(s_previousSGLighting ? s_previousLightingCutoutPSO : s_lightingCutoutPSO);
-		Draw(context, scene.m_modelCutout);
-	}
-}
-
-// Generate a diffuse VSGL and specular VSGL from an RSM.
-void VSGLGenerationPass(ComputeContext& context, const Math::Camera& spotLight, const float lightIntensity)
-{
-	static_assert(RSM_WIDTH % THREAD_GROUP_WIDTH == 0);
-	assert(s_rsmDepthBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmDepthBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmNormalBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmNormalBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmDiffuseBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmDiffuseBuffer.GetHeight() == RSM_WIDTH);
-	assert(s_rsmSpecularBuffer.GetWidth() == RSM_WIDTH);
-	assert(s_rsmSpecularBuffer.GetHeight() == RSM_WIDTH);
-
-	const ScopedTimer profile(L"VSGL Generation", context);
-
-	context.TransitionResource(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.TransitionResource(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	context.SetRootSignature(s_vsglRootSig);
-
-	const float planeWidth = 2.0f * std::tan(spotLight.GetFOV() / 2.0f);
-	const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
-
-	alignas(16) struct
-	{
-		XMMATRIX lightViewProjInv;
-		XMVECTOR lightPosition;
-		XMFLOAT3 lightAxis;
-		float photonPower;
-	} constants;
-
-	constants.lightViewProjInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
-	constants.lightPosition = spotLight.GetPosition();
-	XMStoreFloat3(&constants.lightAxis, XMVector3Cross(spotLight.GetUpVec(), spotLight.GetRightVec()));
-	constants.photonPower = photonPower;
-
-	context.SetDynamicConstantBufferView(VSGL_ROOT_INDEX_CBV, sizeof(constants), &constants);
-	context.SetBufferUAV(VSGL_ROOT_INDEX_UAV, s_sgLightBuffer);
-
-	const std::array srvs = {s_rsmDepthBuffer.GetDepthSRV(), s_rsmNormalBuffer.GetSRV(), s_rsmDiffuseBuffer.GetSRV()};
-
-	// Generate Diffuse VSGLs.
-	context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, static_cast<UINT>(srvs.size()), srvs.data());
-	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 0);
-	context.SetPipelineState(s_vsglGenerationDiffusePSO);
-	context.Dispatch(1, 1, 1);
-
-	// Generate Specular VSGLs.
-	context.SetDynamicDescriptor(VSGL_ROOT_INDEX_SRV, 2, s_rsmSpecularBuffer.GetSRV());
-	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 1);
-	context.SetPipelineState(s_vsglGenerationSpecularPSO);
-	context.Dispatch(1, 1, 1);
-}
 } // namespace
 
 void MyRenderer::Initialize()
 {
-	s_shadowMap.Create(L"s_shadowMap", 2048, 2048, DXGI_FORMAT_D32_FLOAT);
-	s_rsmDepthBuffer.Create(L"s_rsmDepthBuffer", RSM_WIDTH, RSM_WIDTH, DXGI_FORMAT_D32_FLOAT);
-	s_rsmNormalBuffer.Create(L"s_rsmNormalBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R16G16_SNORM);
-	s_rsmDiffuseBuffer.Create(L"s_rsmDiffuseBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R10G10B10A2_UNORM);
-	s_rsmSpecularBuffer.Create(L"s_rsmSpecularBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R8G8B8A8_UNORM);
-	s_sgLightBuffer.Create(L"s_sgLightBuffer", 2, sizeof(uint32_t) * 12);
+	m_shadowMap.Create(L"m_shadowMap", 2048, 2048, DXGI_FORMAT_D32_FLOAT);
+	m_rsmDepthBuffer.Create(L"m_rsmDepthBuffer", RSM_WIDTH, RSM_WIDTH, DXGI_FORMAT_D32_FLOAT);
+	m_rsmNormalBuffer.Create(L"m_rsmNormalBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R16G16_SNORM);
+	m_rsmDiffuseBuffer.Create(L"m_rsmDiffuseBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R10G10B10A2_UNORM);
+	m_rsmSpecularBuffer.Create(L"m_rsmSpecularBuffer", RSM_WIDTH, RSM_WIDTH, 1, DXGI_FORMAT_R8G8B8A8_UNORM);
+	m_sgLightBuffer.Create(L"m_sgLightBuffer", 2, sizeof(uint32_t) * 12);
 
 	// Allocate a descriptor table for forward rendering
 	constexpr uint32_t LIGHTING_DESCRIPTOR_TABLE_SIZE = 1;
-	s_lightingDescriptorTable = Renderer::s_TextureHeap.Alloc(LIGHTING_DESCRIPTOR_TABLE_SIZE);
-	Graphics::g_Device->CopyDescriptorsSimple(1, s_lightingDescriptorTable, s_shadowMap.GetDepthSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_lightingDescriptorTable = Renderer::s_TextureHeap.Alloc(LIGHTING_DESCRIPTOR_TABLE_SIZE);
+	Graphics::g_Device->CopyDescriptorsSimple(1, m_lightingDescriptorTable, m_shadowMap.GetDepthSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	SamplerDesc shadowSamplerDesc;
 	shadowSamplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
@@ -320,41 +123,41 @@ void MyRenderer::Initialize()
 	SamplerDesc samplerAnisotropicWrapDesc = Graphics::SamplerAnisoWrapDesc;
 	samplerAnisotropicWrapDesc.MaxAnisotropy = 16;
 
-	s_depthRootSig.Reset(2, 1);
-	s_depthRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-	s_depthRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::CUTOUT_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_depthRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_depthRootSig.Finalize(L"s_depthRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_depthRootSig.Reset(2, 1);
+	m_depthRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+	m_depthRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::CUTOUT_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_depthRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_depthRootSig.Finalize(L"m_depthRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	s_rsmRootSig.Reset(2, 1);
-	s_rsmRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-	s_rsmRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::MODEL_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_rsmRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_rsmRootSig.Finalize(L"s_rsmRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_rsmRootSig.Reset(2, 1);
+	m_rsmRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+	m_rsmRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::MODEL_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_rsmRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_rsmRootSig.Finalize(L"m_rsmRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	s_lightingRootSig.Reset(5, 2);
-	s_lightingRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-	s_lightingRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::MODEL_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig[ROOT_INDEX_PS_SRV1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Scene::MODEL_SRV_COUNT, LIGHTING_DESCRIPTOR_TABLE_SIZE, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig[ROOT_INDEX_PS_CBV0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig[ROOT_INDEX_PS_CBV1].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig.InitStaticSampler(1, shadowSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-	s_lightingRootSig.Finalize(L"s_lightingRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	m_lightingRootSig.Reset(5, 2);
+	m_lightingRootSig[ROOT_INDEX_VS_CBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+	m_lightingRootSig[ROOT_INDEX_PS_SRV0].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, Scene::MODEL_SRV_COUNT, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig[ROOT_INDEX_PS_SRV1].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Scene::MODEL_SRV_COUNT, LIGHTING_DESCRIPTOR_TABLE_SIZE, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig[ROOT_INDEX_PS_CBV0].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig[ROOT_INDEX_PS_CBV1].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig.InitStaticSampler(0, samplerAnisotropicWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig.InitStaticSampler(1, shadowSamplerDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_lightingRootSig.Finalize(L"m_lightingRootSig", D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	s_vsglRootSig.Reset(4);
-	s_vsglRootSig[VSGL_ROOT_INDEX_CBV].InitAsConstantBuffer(0);
-	s_vsglRootSig[VSGL_ROOT_INDEX_CONSTANTS].InitAsConstants(1, 1);
-	s_vsglRootSig[VSGL_ROOT_INDEX_SRV].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
-	s_vsglRootSig[VSGL_ROOT_INDEX_UAV].InitAsBufferUAV(0);
-	s_vsglRootSig.Finalize(L"s_vsglRootSig");
+	m_vsglRootSig.Reset(4);
+	m_vsglRootSig[VSGL_ROOT_INDEX_CBV].InitAsConstantBuffer(0);
+	m_vsglRootSig[VSGL_ROOT_INDEX_CONSTANTS].InitAsConstants(1, 1);
+	m_vsglRootSig[VSGL_ROOT_INDEX_SRV].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 3);
+	m_vsglRootSig[VSGL_ROOT_INDEX_UAV].InitAsBufferUAV(0);
+	m_vsglRootSig.Finalize(L"m_vsglRootSig");
 
-	s_vsglGenerationDiffusePSO.SetRootSignature(s_vsglRootSig);
-	s_vsglGenerationDiffusePSO.SetComputeShader(g_pVSGLGenerationDiffuseCS, sizeof(g_pVSGLGenerationDiffuseCS));
-	s_vsglGenerationDiffusePSO.Finalize();
-	s_vsglGenerationSpecularPSO.SetRootSignature(s_vsglRootSig);
-	s_vsglGenerationSpecularPSO.SetComputeShader(g_pVSGLGenerationSpecularCS, sizeof(g_pVSGLGenerationSpecularCS));
-	s_vsglGenerationSpecularPSO.Finalize();
+	m_vsglGenerationDiffusePSO.SetRootSignature(m_vsglRootSig);
+	m_vsglGenerationDiffusePSO.SetComputeShader(g_pVSGLGenerationDiffuseCS, sizeof(g_pVSGLGenerationDiffuseCS));
+	m_vsglGenerationDiffusePSO.Finalize();
+	m_vsglGenerationSpecularPSO.SetRootSignature(m_vsglRootSig);
+	m_vsglGenerationSpecularPSO.SetComputeShader(g_pVSGLGenerationSpecularCS, sizeof(g_pVSGLGenerationSpecularCS));
+	m_vsglGenerationSpecularPSO.Finalize();
 
 	{
 		constexpr std::array DEPTH_ELEMENT_DESCS = {
@@ -365,47 +168,47 @@ void MyRenderer::Initialize()
 			D3D12_INPUT_ELEMENT_DESC{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		};
 
-		s_depthPSO.SetRootSignature(s_depthRootSig);
-		s_depthPSO.SetRasterizerState(Graphics::RasterizerDefault);
-		s_depthPSO.SetBlendState(Graphics::BlendNoColorWrite);
-		s_depthPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_depthPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
-		s_depthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_depthPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
-		s_depthPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
-		s_depthPSO.Finalize();
+		m_depthPSO.SetRootSignature(m_depthRootSig);
+		m_depthPSO.SetRasterizerState(Graphics::RasterizerDefault);
+		m_depthPSO.SetBlendState(Graphics::BlendNoColorWrite);
+		m_depthPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_depthPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
+		m_depthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_depthPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
+		m_depthPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
+		m_depthPSO.Finalize();
 
-		s_depthCutoutPSO.SetRootSignature(s_depthRootSig);
-		s_depthCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-		s_depthCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
-		s_depthCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_depthCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
-		s_depthCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_depthCutoutPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
-		s_depthCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
-		s_depthCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
-		s_depthCutoutPSO.Finalize();
+		m_depthCutoutPSO.SetRootSignature(m_depthRootSig);
+		m_depthCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
+		m_depthCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
+		m_depthCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_depthCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
+		m_depthCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_depthCutoutPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
+		m_depthCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
+		m_depthCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
+		m_depthCutoutPSO.Finalize();
 
-		s_shadowMapPSO.SetRootSignature(s_depthRootSig);
-		s_shadowMapPSO.SetRasterizerState(Graphics::RasterizerShadow);
-		s_shadowMapPSO.SetBlendState(Graphics::BlendNoColorWrite);
-		s_shadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_shadowMapPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
-		s_shadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_shadowMapPSO.SetRenderTargetFormats(0, nullptr, s_shadowMap.GetFormat());
-		s_shadowMapPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
-		s_shadowMapPSO.Finalize();
+		m_shadowMapPSO.SetRootSignature(m_depthRootSig);
+		m_shadowMapPSO.SetRasterizerState(Graphics::RasterizerShadow);
+		m_shadowMapPSO.SetBlendState(Graphics::BlendNoColorWrite);
+		m_shadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_shadowMapPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
+		m_shadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_shadowMapPSO.SetRenderTargetFormats(0, nullptr, m_shadowMap.GetFormat());
+		m_shadowMapPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
+		m_shadowMapPSO.Finalize();
 
-		s_shadowMapCutoutPSO.SetRootSignature(s_depthRootSig);
-		s_shadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerShadowTwoSided);
-		s_shadowMapCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
-		s_shadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_shadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
-		s_shadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_shadowMapCutoutPSO.SetRenderTargetFormats(0, nullptr, s_shadowMap.GetFormat());
-		s_shadowMapCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
-		s_shadowMapCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
-		s_shadowMapCutoutPSO.Finalize();
+		m_shadowMapCutoutPSO.SetRootSignature(m_depthRootSig);
+		m_shadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerShadowTwoSided);
+		m_shadowMapCutoutPSO.SetBlendState(Graphics::BlendNoColorWrite);
+		m_shadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_shadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
+		m_shadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_shadowMapCutoutPSO.SetRenderTargetFormats(0, nullptr, m_shadowMap.GetFormat());
+		m_shadowMapCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
+		m_shadowMapCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
+		m_shadowMapCutoutPSO.Finalize();
 	}
 	{
 		constexpr std::array ELEMENT_DESCS = {
@@ -415,108 +218,281 @@ void MyRenderer::Initialize()
 			D3D12_INPUT_ELEMENT_DESC{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 			D3D12_INPUT_ELEMENT_DESC{"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		};
-		const std::array rsmFormats = {s_rsmNormalBuffer.GetFormat(), s_rsmDiffuseBuffer.GetFormat(), s_rsmSpecularBuffer.GetFormat()};
+		const std::array rsmFormats = {m_rsmNormalBuffer.GetFormat(), m_rsmDiffuseBuffer.GetFormat(), m_rsmSpecularBuffer.GetFormat()};
 
-		s_reflectiveShadowMapPSO.SetRootSignature(s_rsmRootSig);
-		s_reflectiveShadowMapPSO.SetRasterizerState(Graphics::RasterizerDefault);
-		s_reflectiveShadowMapPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_reflectiveShadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_reflectiveShadowMapPSO.SetBlendState(Graphics::BlendDisable);
-		s_reflectiveShadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_reflectiveShadowMapPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), s_rsmDepthBuffer.GetFormat());
-		s_reflectiveShadowMapPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
-		s_reflectiveShadowMapPSO.SetPixelShader(g_pReflectiveShadowMapPS, sizeof(g_pReflectiveShadowMapPS));
-		s_reflectiveShadowMapPSO.Finalize();
+		m_reflectiveShadowMapPSO.SetRootSignature(m_rsmRootSig);
+		m_reflectiveShadowMapPSO.SetRasterizerState(Graphics::RasterizerDefault);
+		m_reflectiveShadowMapPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_reflectiveShadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_reflectiveShadowMapPSO.SetBlendState(Graphics::BlendDisable);
+		m_reflectiveShadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_reflectiveShadowMapPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), m_rsmDepthBuffer.GetFormat());
+		m_reflectiveShadowMapPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
+		m_reflectiveShadowMapPSO.SetPixelShader(g_pReflectiveShadowMapPS, sizeof(g_pReflectiveShadowMapPS));
+		m_reflectiveShadowMapPSO.Finalize();
 
-		s_reflectiveShadowMapCutoutPSO.SetRootSignature(s_rsmRootSig);
-		s_reflectiveShadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-		s_reflectiveShadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_reflectiveShadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_reflectiveShadowMapCutoutPSO.SetBlendState(Graphics::BlendDisable);
-		s_reflectiveShadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
-		s_reflectiveShadowMapCutoutPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), s_rsmDepthBuffer.GetFormat());
-		s_reflectiveShadowMapCutoutPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
-		s_reflectiveShadowMapCutoutPSO.SetPixelShader(g_pReflectiveShadowMapCutoutPS, sizeof(g_pReflectiveShadowMapCutoutPS));
-		s_reflectiveShadowMapCutoutPSO.Finalize();
+		m_reflectiveShadowMapCutoutPSO.SetRootSignature(m_rsmRootSig);
+		m_reflectiveShadowMapCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
+		m_reflectiveShadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_reflectiveShadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_reflectiveShadowMapCutoutPSO.SetBlendState(Graphics::BlendDisable);
+		m_reflectiveShadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
+		m_reflectiveShadowMapCutoutPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), m_rsmDepthBuffer.GetFormat());
+		m_reflectiveShadowMapCutoutPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
+		m_reflectiveShadowMapCutoutPSO.SetPixelShader(g_pReflectiveShadowMapCutoutPS, sizeof(g_pReflectiveShadowMapCutoutPS));
+		m_reflectiveShadowMapCutoutPSO.Finalize();
 
-		s_lightingPSO.SetRootSignature(s_lightingRootSig);
-		s_lightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
-		s_lightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_lightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_lightingPSO.SetBlendState(Graphics::BlendDisable);
-		s_lightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-		s_lightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		s_lightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		s_lightingPSO.SetPixelShader(g_pLightingPS, sizeof(g_pLightingPS));
-		s_lightingPSO.Finalize();
+		m_lightingPSO.SetRootSignature(m_lightingRootSig);
+		m_lightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
+		m_lightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_lightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_lightingPSO.SetBlendState(Graphics::BlendDisable);
+		m_lightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+		m_lightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+		m_lightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+		m_lightingPSO.SetPixelShader(g_pLightingPS, sizeof(g_pLightingPS));
+		m_lightingPSO.Finalize();
 
-		s_lightingCutoutPSO.SetRootSignature(s_lightingRootSig);
-		s_lightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-		s_lightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_lightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_lightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
-		s_lightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-		s_lightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		s_lightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		s_lightingCutoutPSO.SetPixelShader(g_pLightingCutoutPS, sizeof(g_pLightingCutoutPS));
-		s_lightingCutoutPSO.Finalize();
+		m_lightingCutoutPSO.SetRootSignature(m_lightingRootSig);
+		m_lightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
+		m_lightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_lightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_lightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
+		m_lightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+		m_lightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+		m_lightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+		m_lightingCutoutPSO.SetPixelShader(g_pLightingCutoutPS, sizeof(g_pLightingCutoutPS));
+		m_lightingCutoutPSO.Finalize();
 
-		s_previousLightingPSO.SetRootSignature(s_lightingRootSig);
-		s_previousLightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
-		s_previousLightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_previousLightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_previousLightingPSO.SetBlendState(Graphics::BlendDisable);
-		s_previousLightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-		s_previousLightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		s_previousLightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		s_previousLightingPSO.SetPixelShader(g_pPreviousLightingPS, sizeof(g_pPreviousLightingPS));
-		s_previousLightingPSO.Finalize();
+		m_previousLightingPSO.SetRootSignature(m_lightingRootSig);
+		m_previousLightingPSO.SetRasterizerState(Graphics::RasterizerDefault);
+		m_previousLightingPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_previousLightingPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_previousLightingPSO.SetBlendState(Graphics::BlendDisable);
+		m_previousLightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+		m_previousLightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+		m_previousLightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+		m_previousLightingPSO.SetPixelShader(g_pPreviousLightingPS, sizeof(g_pPreviousLightingPS));
+		m_previousLightingPSO.Finalize();
 
-		s_previousLightingCutoutPSO.SetRootSignature(s_lightingRootSig);
-		s_previousLightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
-		s_previousLightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
-		s_previousLightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_previousLightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
-		s_previousLightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
-		s_previousLightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		s_previousLightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		s_previousLightingCutoutPSO.SetPixelShader(g_pPreviousLightingCutoutPS, sizeof(g_pPreviousLightingCutoutPS));
-		s_previousLightingCutoutPSO.Finalize();
+		m_previousLightingCutoutPSO.SetRootSignature(m_lightingRootSig);
+		m_previousLightingCutoutPSO.SetRasterizerState(Graphics::RasterizerTwoSided);
+		m_previousLightingCutoutPSO.SetInputLayout(static_cast<UINT>(ELEMENT_DESCS.size()), ELEMENT_DESCS.data());
+		m_previousLightingCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		m_previousLightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
+		m_previousLightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
+		m_previousLightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
+		m_previousLightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
+		m_previousLightingCutoutPSO.SetPixelShader(g_pPreviousLightingCutoutPS, sizeof(g_pPreviousLightingCutoutPS));
+		m_previousLightingCutoutPSO.Finalize();
 	}
 }
 
 void MyRenderer::Shutdown()
 {
-	s_shadowMap.Destroy();
-	s_rsmDepthBuffer.Destroy();
-	s_rsmNormalBuffer.Destroy();
-	s_rsmDiffuseBuffer.Destroy();
-	s_rsmSpecularBuffer.Destroy();
-	s_sgLightBuffer.Destroy();
+	m_shadowMap.Destroy();
+	m_rsmDepthBuffer.Destroy();
+	m_rsmNormalBuffer.Destroy();
+	m_rsmDiffuseBuffer.Destroy();
+	m_rsmSpecularBuffer.Destroy();
+	m_sgLightBuffer.Destroy();
 }
 
 void MyRenderer::Render(GraphicsContext& context, const Scene& scene)
 {
 	// Initialize rendering buffers.
-	context.TransitionResource(s_rsmDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	context.TransitionResource(s_rsmNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	context.TransitionResource(s_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	context.TransitionResource(s_rsmSpecularBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	context.TransitionResource(s_shadowMap, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	context.TransitionResource(s_sgLightBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	context.TransitionResource(m_rsmDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	context.TransitionResource(m_rsmNormalBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	context.TransitionResource(m_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	context.TransitionResource(m_rsmSpecularBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	context.TransitionResource(m_shadowMap, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	context.TransitionResource(m_sgLightBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	context.TransitionResource(Graphics::g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	context.ClearDepth(s_rsmDepthBuffer);
-	context.ClearColor(s_rsmDiffuseBuffer);
-	context.ClearColor(s_rsmSpecularBuffer);
-	context.ClearDepth(s_shadowMap);
+	context.ClearDepth(m_rsmDepthBuffer);
+	context.ClearColor(m_rsmDiffuseBuffer);
+	context.ClearColor(m_rsmSpecularBuffer);
+	context.ClearDepth(m_shadowMap);
 	context.ClearDepth(Graphics::g_SceneDepthBuffer);
 	context.ClearColor(Graphics::g_SceneColorBuffer);
 
 	ReflectiveShadowMapPass(context, scene);
 	ShadowMapPass(context, scene);
-	VSGLGenerationPass(context.GetComputeContext(), scene.m_spotlight, scene.m_spotlightIntensity);
 	DepthPass(context, scene);
+	VSGLGenerationPass(context.GetComputeContext(), scene.m_spotlight, scene.m_spotlightIntensity);
 	LightingPass(context, scene);
+}
+
+void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Reflective Shadow Map", context);
+
+	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
+	const std::array rtvs = {m_rsmNormalBuffer.GetRTV(), m_rsmDiffuseBuffer.GetRTV(), m_rsmSpecularBuffer.GetRTV()};
+
+	context.SetRootSignature(m_rsmRootSig);
+	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+	context.SetViewportAndScissor(0, 0, m_rsmDepthBuffer.GetWidth(), m_rsmDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), m_rsmDepthBuffer.GetDSV());
+	context.SetPipelineState(m_reflectiveShadowMapPSO);
+	Draw(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetPipelineState(m_reflectiveShadowMapCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+
+	context.BeginResourceTransition(m_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(m_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(m_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.BeginResourceTransition(m_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+}
+
+void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Shadow Map", context);
+
+	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
+
+	context.SetRootSignature(m_depthRootSig);
+	context.SetViewportAndScissor(0, 0, m_shadowMap.GetWidth(), m_shadowMap.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDepthStencilTarget(m_shadowMap.GetDSV());
+	context.SetPipelineState(m_shadowMapPSO);
+	DrawDepth(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+		context.SetPipelineState(m_shadowMapCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+
+	context.BeginResourceTransition(m_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+}
+
+void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Depth", context);
+
+	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
+
+	context.SetRootSignature(m_depthRootSig);
+	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
+	context.SetPipelineState(m_depthPSO);
+	DrawDepth(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+		context.SetPipelineState(m_depthCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+
+	context.BeginResourceTransition(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
+}
+
+void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
+{
+	const ScopedTimer profile(L"Lighting", context);
+
+	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
+	context.TransitionResource(m_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(m_sgLightBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
+
+	alignas(16) struct
+	{
+		XMMATRIX lightViewProj;
+		XMVECTOR cameraPosition;
+		XMFLOAT3 lightPosition;
+		float lightIntensity;
+	} constants{};
+
+	constants.lightViewProj = scene.m_spotlight.GetViewProjMatrix();
+	constants.cameraPosition = scene.m_camera.GetPosition();
+	XMStoreFloat3(&constants.lightPosition, scene.m_spotlight.GetPosition());
+	constants.lightIntensity = scene.m_spotlightIntensity;
+
+	context.SetRootSignature(m_lightingRootSig);
+	context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
+	context.SetViewportAndScissor(0, 0, Graphics::g_SceneDepthBuffer.GetWidth(), Graphics::g_SceneDepthBuffer.GetHeight());
+	context.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
+	context.SetDynamicConstantBufferView(ROOT_INDEX_PS_CBV0, sizeof(constants), &constants);
+	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, m_sgLightBuffer.RootConstantBufferView());
+	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, m_lightingDescriptorTable);
+	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
+	context.SetPipelineState(m_previousSGLighting ? m_previousLightingPSO : m_lightingPSO);
+	Draw(context, scene.m_model);
+
+	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	{
+		context.SetPipelineState(m_previousSGLighting ? m_previousLightingCutoutPSO : m_lightingCutoutPSO);
+		Draw(context, scene.m_modelCutout);
+	}
+}
+
+// Generate a diffuse VSGL and specular VSGL from an RSM.
+void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera& spotLight, const float lightIntensity)
+{
+	static_assert(RSM_WIDTH % THREAD_GROUP_WIDTH == 0);
+	assert(m_rsmDepthBuffer.GetWidth() == RSM_WIDTH);
+	assert(m_rsmDepthBuffer.GetHeight() == RSM_WIDTH);
+	assert(m_rsmNormalBuffer.GetWidth() == RSM_WIDTH);
+	assert(m_rsmNormalBuffer.GetHeight() == RSM_WIDTH);
+	assert(m_rsmDiffuseBuffer.GetWidth() == RSM_WIDTH);
+	assert(m_rsmDiffuseBuffer.GetHeight() == RSM_WIDTH);
+	assert(m_rsmSpecularBuffer.GetWidth() == RSM_WIDTH);
+	assert(m_rsmSpecularBuffer.GetHeight() == RSM_WIDTH);
+
+	const ScopedTimer profile(L"VSGL Generation", context);
+
+	context.TransitionResource(m_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(m_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(m_rsmDiffuseBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.TransitionResource(m_rsmSpecularBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	context.SetRootSignature(m_vsglRootSig);
+
+	const float planeWidth = 2.0f * std::tan(spotLight.GetFOV() / 2.0f);
+	const float photonPower = lightIntensity * (planeWidth * planeWidth) / (RSM_WIDTH * RSM_WIDTH); // Photon power before multiplying the Jacobian.
+
+	alignas(16) struct
+	{
+		XMMATRIX lightViewProjInv;
+		XMVECTOR lightPosition;
+		XMFLOAT3 lightAxis;
+		float photonPower;
+	} constants{};
+
+	constants.lightViewProjInv = XMMatrixInverse(nullptr, spotLight.GetViewProjMatrix());
+	constants.lightPosition = spotLight.GetPosition();
+	XMStoreFloat3(&constants.lightAxis, XMVector3Cross(spotLight.GetUpVec(), spotLight.GetRightVec()));
+	constants.photonPower = photonPower;
+
+	context.SetDynamicConstantBufferView(VSGL_ROOT_INDEX_CBV, sizeof(constants), &constants);
+	context.SetBufferUAV(VSGL_ROOT_INDEX_UAV, m_sgLightBuffer);
+
+	const std::array srvs = {m_rsmDepthBuffer.GetDepthSRV(), m_rsmNormalBuffer.GetSRV(), m_rsmDiffuseBuffer.GetSRV()};
+
+	// Generate Diffuse VSGLs.
+	context.SetDynamicDescriptors(VSGL_ROOT_INDEX_SRV, 0, static_cast<UINT>(srvs.size()), srvs.data());
+	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 0);
+	context.SetPipelineState(m_vsglGenerationDiffusePSO);
+	context.Dispatch(1, 1, 1);
+
+	// Generate Specular VSGLs.
+	context.SetDynamicDescriptor(VSGL_ROOT_INDEX_SRV, 2, m_rsmSpecularBuffer.GetSRV());
+	context.SetConstants(VSGL_ROOT_INDEX_CONSTANTS, 1);
+	context.SetPipelineState(m_vsglGenerationSpecularPSO);
+	context.Dispatch(1, 1, 1);
 }
 } // namespace vsgl
