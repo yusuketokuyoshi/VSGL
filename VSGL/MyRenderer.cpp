@@ -31,7 +31,7 @@ namespace vsgl
 {
 namespace
 {
-BoolVar m_previousSGLighting{"SG lighting/Previous method", false};
+BoolVar s_previousSGLighting{"SG lighting/Previous method", false};
 
 enum GFX_ROOT_INDEX
 {
@@ -431,12 +431,12 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
 	context.SetConstantBuffer(ROOT_INDEX_PS_CBV1, m_sgLightBuffer.RootConstantBufferView());
 	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, m_lightingDescriptorTable);
 	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-	context.SetPipelineState(m_previousSGLighting ? m_previousLightingPSO : m_lightingPSO);
+	context.SetPipelineState(s_previousSGLighting ? m_previousLightingPSO : m_lightingPSO);
 	Draw(context, scene.m_model);
 
 	if (scene.m_modelCutout.m_Header.meshCount > 0)
 	{
-		context.SetPipelineState(m_previousSGLighting ? m_previousLightingCutoutPSO : m_lightingCutoutPSO);
+		context.SetPipelineState(s_previousSGLighting ? m_previousLightingCutoutPSO : m_lightingCutoutPSO);
 		Draw(context, scene.m_modelCutout);
 	}
 }
