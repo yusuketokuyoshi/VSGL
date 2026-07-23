@@ -38,7 +38,7 @@ For the GGX microfacet BRDF under sharp SG lights, this method produces higher-q
 
 ## Getting Started
 
- 1. Open `VSGL/VSGL.sln`
+ 1. Open `VSGL/VSGL.slnx`
  2. Select configuration: Debug (full validation), Profile (instrumented), Release
  3. Build and run
 

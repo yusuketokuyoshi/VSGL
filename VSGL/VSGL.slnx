@@ -1,0 +1,19 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Profile" />
+    <BuildType Name="Release" />
+    <Platform Name="Windows" />
+  </Configurations>
+  <Folder Name="/MiniEngine/">
+    <Project Path="../MiniEngine/Core/Core.vcxproj" Id="86a58508-0d6a-4786-a32f-01a301fdc6f3">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="../MiniEngine/Model/Model.vcxproj" Id="5d3aeefb-8789-48e5-9bd9-09c667052d09">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+  <Project Path="VSGL.vcxproj" Id="1813bd6e-e2af-4a3c-8c54-4e72119da993">
+    <Platform Project="x64" />
+  </Project>
+</Solution>
