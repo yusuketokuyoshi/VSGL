@@ -5,12 +5,12 @@
 #include "NumericLimits.hlsli"
 
 // Symmetric GGX using anisotropic alpha roughness.
-float SGGX(const float3 m, const float2 roughness)
+float SGGX(const float3 m, const float2 alpha)
 {
-	const float3 stretched = float3(m.xy / roughness, m.z);
+	const float3 stretched = float3(m.xy / alpha, m.z);
 	const float length2 = dot(stretched, stretched);
 
-	return 1.0 / (M_PI * (roughness.x * roughness.y) * (length2 * length2));
+	return 1.0 / (M_PI * (alpha.x * alpha.y) * (length2 * length2));
 }
 
 // Symmetric GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
@@ -24,9 +24,9 @@ float SGGX(const float3 m, const float2x2 roughnessMat)
 }
 
 // Axis-aligned anisotropic GGX.
-float GGX(const float3 m, const float2 roughness)
+float GGX(const float3 m, const float2 alpha)
 {
-	return (m.z > 0.0) ? SGGX(m, roughness) : 0.0;
+	return (m.z > 0.0) ? SGGX(m, alpha) : 0.0;
 }
 
 // Non-axis-aligned anisotropic GGX.
@@ -38,16 +38,16 @@ float GGX(const float3 m, const float2x2 roughnessMat)
 
 // A dominant visible mirocafet normal for the GGX NDF.
 // This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
-float3 GGXDominantVisibleNormal(const float3 wi, const float2 roughness)
+float3 GGXDominantVisibleNormal(const float3 wi, const float2 alpha)
 {
 	// Numerically stable implementation for wi.x < 0
 	// Similar manner to Tokuyoshi and Eto 2024 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
-	const float2 v = roughness * wi.xy;
+	const float2 v = alpha * wi.xy;
 	const float len2 = dot(v, v);
 	const float t = sqrt(len2 + wi.z * wi.z);
 	const float z = select(wi.z >= 0.0f, t + wi.z, len2 / (t - wi.z));
 
-	return normalize(float3(roughness * roughness * wi.xy, z));
+	return normalize(float3(alpha * alpha * wi.xy, z));
 }
 
 // Reflection lobe based on the symmetric GGX VNDF.

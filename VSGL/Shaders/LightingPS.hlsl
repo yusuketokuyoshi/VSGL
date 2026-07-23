@@ -50,16 +50,16 @@ struct Input
 // The previous implementation (that can be enabled by "PREVIOUS_SG_LIGHTING") used ASGs [Xu et al. 2013].
 // The current implementation uses a new SG lighting method based on NDF filtering.
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
-float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float2 roughness)
+float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float3 position, const float3 normal, const float3 diffuse, const float3 specular, const float2 alpha)
 {
 #if defined(PREVIOUS_SG_LIGHTING)
-	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, roughness.x * roughness.y); // Assume roughness.x == roughness.y
+	const ASGLobe specularLobe = ASGReflectionLobe(viewDir, normal, alpha.x * alpha.y); // Assume alpha.x == alpha.y
 	const float3 reflecVec = specularLobe.z * ASGSharpnessToSGSharpness(specularLobe.sharpness);
 #else
 	// Convert the roughness parameter from slope space to the orthographically projected space.
 	// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
-	const float2 roughness2 = roughness * roughness;
-	const float2 projRoughness2 = roughness2 / max(1.0 - roughness2, FLT_MIN);
+	const float2 alpha2 = alpha * alpha;
+	const float2 projAlpha2 = alpha2 / max(1.0 - alpha2, FLT_MIN);
 
 	// Compute the Jacobian matrix J for the transformation between halfvetors and reflection vectors at halfvector = normal.
 	// TODO: Investigate a more dominant halfvector for rough surfaces than the normal.
@@ -79,10 +79,10 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 	// We use a conservative SG sharpness to filter the visibility as mentioned in the last paragraph "Filtered Visibility" of Section 5.2 of the paper.
 	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting"]
 	// Unlike the paper, we use a dominant visible microfacet normal instead of the shading normal to obtain the dominant reflection vector.
-	const float roughnessMax2 = max(roughness2.x, roughness2.y);
-	const float reflecSharpness = (1.0 - roughnessMax2) / max(2.0f * roughnessMax2, FLT_MIN);
+	const float alphaMax2 = max(alpha2.x, alpha2.y);
+	const float reflecSharpness = (1.0 - alphaMax2) / max(2.0f * alphaMax2, FLT_MIN);
 #if 1
-	const float3 dominantNormal = mul(GGXDominantVisibleNormal(wi, roughness), tangentFrame);
+	const float3 dominantNormal = mul(GGXDominantVisibleNormal(wi, alpha), tangentFrame);
 #else
 	const float3 dominantNormal = normal; // Used in the paper.
 #endif
@@ -125,7 +125,7 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		// We approximate this coefficient function with the value at the dominant direction.
 		// The dominant direction is given by the product of the specular lobe and light lobe in SG basis.
 		const float3 dominantDir = normalize(reflecVec + lightLobe.axis * lightLobe.sharpness); // Axis of the SG product lobe.
-		const float coefficient = SmithGGXLobeOverUnnormalizedNDF(viewDir, dominantDir, normal, roughness.x * roughness.y); // Fresnel = 1 in this implementation.
+		const float coefficient = SmithGGXLobeOverUnnormalizedNDF(viewDir, dominantDir, normal, alpha.x * alpha.y); // Fresnel = 1 in this implementation.
 		const float specularIllumination = coefficient * ASGProductIntegral(specularLobe, lightLobe);
 #else
 		// Diffuse SG lighting.
@@ -137,11 +137,11 @@ float3 SGLighting(const float3 viewDir, const float3x3 tangentFrame, const float
 		// Glossy SG lighting.
 		// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5]
 		const float lightLobeVariance = 1.0 / lightLobe.sharpness;
-		const float2x2 filteredProjRoughnessMat = float2x2(projRoughness2.x, 0.0, 0.0, projRoughness2.y) + 2.0 * lightLobeVariance * jjMat;
+		const float2x2 filteredProjRoughnessMat = float2x2(projAlpha2.x, 0.0, 0.0, projAlpha2.y) + 2.0 * lightLobeVariance * jjMat;
 
 		// Compute the determinant of filteredProjRoughnessMat in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
-		const float det = projRoughness2.x * projRoughness2.y + 2.0 * lightLobeVariance * (projRoughness2.x * jjMat._11 + projRoughness2.y * jjMat._22) + lightLobeVariance * lightLobeVariance * detJJ4;
+		const float det = projAlpha2.x * projAlpha2.y + 2.0 * lightLobeVariance * (projAlpha2.x * jjMat._11 + projAlpha2.y * jjMat._22) + lightLobeVariance * lightLobeVariance * detJJ4;
 
 		// NDF filtering in a numerically stable manner.
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
@@ -186,24 +186,24 @@ float3 main(const Input input) : SV_Target
 	const float3x3 tangentFrame = BuildTangentFrame(normal, input.tangent, input.bitangentSign);
 	const float3 viewDir = normalize(g_cameraPosition - input.wpos);
 	const float3 wi = mul(tangentFrame, viewDir);
-	const float2 roughness = PerceptualRoughnessToAlpha(specular.w);
+	const float2 alpha = PerceptualRoughnessToAlpha(specular.w);
 
 	// Geometric specular antialiasing with NDF filtering.
-	const float2 effectiveRoughness = IsotropicNDFFiltering(ddx(baseNormal), ddy(baseNormal), roughness);
+	const float2 effectiveAlpha = IsotropicNDFFiltering(ddx(baseNormal), ddy(baseNormal), alpha);
 
 	// Direct illumination.
 	const float3 lightVec = g_lightPosition - input.wpos;
 	const float lightDistance2 = dot(lightVec, lightVec);
 	const float3 lightDir = lightVec * rsqrt(lightDistance2);
 	const float3 wo = mul(tangentFrame, lightDir);
-	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(wi, wo, effectiveRoughness); // Fresnel = 1 in this implementation.
+	const float3 brdf = diffuse / M_PI + specular.xyz * SmithGGXBRDF(wi, wo, effectiveAlpha); // Fresnel = 1 in this implementation.
 	const float3 shadowNDC = NDCTransform(input.wpos, g_lightViewProj);
 	const float2 shadowTexcoord = NDCToTexcoord(shadowNDC.xy);
 	const float visibility = shadowMap.SampleCmpLevelZero(shadowSampler, shadowTexcoord, saturate(shadowNDC.z));
 	const float3 directIllumination = brdf * (g_lightIntensity * visibility * saturate(wo.z) / lightDistance2);
 
 	// Indirect illumination using VSGLs.
-	const float3 indirectIllumination = SGLighting(viewDir, tangentFrame, input.wpos, normal, diffuse, specular.xyz, effectiveRoughness);
+	const float3 indirectIllumination = SGLighting(viewDir, tangentFrame, input.wpos, normal, diffuse, specular.xyz, effectiveAlpha);
 
 	return directIllumination + indirectIllumination;
 }

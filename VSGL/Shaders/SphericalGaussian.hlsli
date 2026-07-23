@@ -207,16 +207,16 @@ float SGClampedCosineProductIntegral2024(const float cosine, const float sharpne
 }
 
 // Approximate the tangent-space reflection lobe with an SG for the GGX microfacet BRDF.
-SGLobe SGReflectionLobe(const float3 wi, const float2 roughness)
+SGLobe SGReflectionLobe(const float3 wi, const float2 alpha)
 {
 	// Compute SG sharpness for the NDF.
 	// Unlike Wang et al. [2009], we use the following equation based on the Appendix of [Tokuyoshi and Harada 2019 "Hierarchical Russian Roulette for Vertex Connections"].
-	const float roughness2 = roughness.x * roughness.y;
-	const float sharpnessNDF = 2.0 / roughness2 - 2.0;
+	const float alpha2 = alpha.x * alpha.y;
+	const float sharpnessNDF = 2.0 / alpha2 - 2.0;
 
 	// Approximate the reflection lobe axis.
 	// Unlike Wang et al. [2009], we use a dominant visible normal instead of the shading normal to obtain a dominant reflection direction for rough surfaces.
-	const float3 dominantNormal = GGXDominantVisibleNormal(wi, roughness);
+	const float3 dominantNormal = GGXDominantVisibleNormal(wi, alpha);
 	const float3 axis = reflect(-wi, dominantNormal);
 
 	// Jacobian for the transformation between halfvectors and reflection vectors.
