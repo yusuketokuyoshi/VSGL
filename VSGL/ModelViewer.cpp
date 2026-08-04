@@ -6,6 +6,9 @@
 #include "PostEffects.h"
 #include "Renderer.h"
 
+#include <windef.h>
+#include <winuser.h>
+
 #include <memory>
 
 namespace vsgl
@@ -21,11 +24,19 @@ class ModelViewer : public GameCore::IGameApp
 	MyRenderer m_renderer;
 
   public:
+	ModelViewer() = default;
+	ModelViewer(const ModelViewer&) = delete;
+	ModelViewer(ModelViewer&&) = delete;
+	void operator=(const ModelViewer&) = delete;
+	void operator=(ModelViewer&&) = delete;
+
+	virtual ~ModelViewer() = default;
+
 	void Startup() override;
 
 	void Cleanup() override;
 
-	void Update(const float deltaT) override;
+	void Update(float deltaT) override;
 
 	void RenderScene() override;
 };

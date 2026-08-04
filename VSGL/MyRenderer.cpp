@@ -6,6 +6,12 @@
 #include "CommandContext.h"
 #include "Renderer.h"
 
+#include <d3d12.h>
+#include <d3dcommon.h>
+#include <dxgiformat.h>
+
+#include <DirectXMath.h>
+
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -33,7 +39,7 @@ namespace
 {
 BoolVar s_previousSGLighting{"SG lighting/Previous method", false};
 
-enum GFX_ROOT_INDEX
+enum GFX_ROOT_INDEX : uint8_t
 {
 	ROOT_INDEX_VS_CBV,
 	ROOT_INDEX_PS_SRV0,
@@ -41,7 +47,8 @@ enum GFX_ROOT_INDEX
 	ROOT_INDEX_PS_CBV0,
 	ROOT_INDEX_PS_CBV1,
 };
-enum VSGL_ROOT_INDEX
+
+enum VSGL_ROOT_INDEX : uint8_t
 {
 	VSGL_ROOT_INDEX_CBV,
 	VSGL_ROOT_INDEX_CONSTANTS,
@@ -153,19 +160,20 @@ void MyRenderer::Initialize()
 	m_vsglRootSig.Finalize(L"m_vsglRootSig");
 
 	m_vsglGenerationDiffusePSO.SetRootSignature(m_vsglRootSig);
-	m_vsglGenerationDiffusePSO.SetComputeShader(g_pVSGLGenerationDiffuseCS, sizeof(g_pVSGLGenerationDiffuseCS));
+	m_vsglGenerationDiffusePSO.SetComputeShader(static_cast<const void*>(g_pVSGLGenerationDiffuseCS), sizeof(g_pVSGLGenerationDiffuseCS));
 	m_vsglGenerationDiffusePSO.Finalize();
 	m_vsglGenerationSpecularPSO.SetRootSignature(m_vsglRootSig);
-	m_vsglGenerationSpecularPSO.SetComputeShader(g_pVSGLGenerationSpecularCS, sizeof(g_pVSGLGenerationSpecularCS));
+	m_vsglGenerationSpecularPSO.SetComputeShader(static_cast<const void*>(g_pVSGLGenerationSpecularCS), sizeof(g_pVSGLGenerationSpecularCS));
 	m_vsglGenerationSpecularPSO.Finalize();
 
 	{
 		constexpr std::array DEPTH_ELEMENT_DESCS = {
-			D3D12_INPUT_ELEMENT_DESC{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
 		};
+
 		constexpr std::array CUTOUT_ELEMENT_DESCS = {
-			D3D12_INPUT_ELEMENT_DESC{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			D3D12_INPUT_ELEMENT_DESC{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "TEXCOORD", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
 		};
 
 		m_depthPSO.SetRootSignature(m_depthRootSig);
@@ -175,7 +183,7 @@ void MyRenderer::Initialize()
 		m_depthPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
 		m_depthPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 		m_depthPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
-		m_depthPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
+		m_depthPSO.SetVertexShader(static_cast<const void*>(g_pDepthVS), sizeof(g_pDepthVS));
 		m_depthPSO.Finalize();
 
 		m_depthCutoutPSO.SetRootSignature(m_depthRootSig);
@@ -185,8 +193,8 @@ void MyRenderer::Initialize()
 		m_depthCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
 		m_depthCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 		m_depthCutoutPSO.SetRenderTargetFormats(0, nullptr, Graphics::g_SceneDepthBuffer.GetFormat());
-		m_depthCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
-		m_depthCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
+		m_depthCutoutPSO.SetVertexShader(static_cast<const void*>(g_pDepthCutoutVS), sizeof(g_pDepthCutoutVS));
+		m_depthCutoutPSO.SetPixelShader(static_cast<const void*>(g_pDepthCutoutPS), sizeof(g_pDepthCutoutPS));
 		m_depthCutoutPSO.Finalize();
 
 		m_shadowMapPSO.SetRootSignature(m_depthRootSig);
@@ -196,7 +204,7 @@ void MyRenderer::Initialize()
 		m_shadowMapPSO.SetInputLayout(static_cast<UINT>(DEPTH_ELEMENT_DESCS.size()), DEPTH_ELEMENT_DESCS.data());
 		m_shadowMapPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 		m_shadowMapPSO.SetRenderTargetFormats(0, nullptr, m_shadowMap.GetFormat());
-		m_shadowMapPSO.SetVertexShader(g_pDepthVS, sizeof(g_pDepthVS));
+		m_shadowMapPSO.SetVertexShader(static_cast<const void*>(g_pDepthVS), sizeof(g_pDepthVS));
 		m_shadowMapPSO.Finalize();
 
 		m_shadowMapCutoutPSO.SetRootSignature(m_depthRootSig);
@@ -206,18 +214,19 @@ void MyRenderer::Initialize()
 		m_shadowMapCutoutPSO.SetInputLayout(static_cast<UINT>(CUTOUT_ELEMENT_DESCS.size()), CUTOUT_ELEMENT_DESCS.data());
 		m_shadowMapCutoutPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 		m_shadowMapCutoutPSO.SetRenderTargetFormats(0, nullptr, m_shadowMap.GetFormat());
-		m_shadowMapCutoutPSO.SetVertexShader(g_pDepthCutoutVS, sizeof(g_pDepthCutoutVS));
-		m_shadowMapCutoutPSO.SetPixelShader(g_pDepthCutoutPS, sizeof(g_pDepthCutoutPS));
+		m_shadowMapCutoutPSO.SetVertexShader(static_cast<const void*>(g_pDepthCutoutVS), sizeof(g_pDepthCutoutVS));
+		m_shadowMapCutoutPSO.SetPixelShader(static_cast<const void*>(g_pDepthCutoutPS), sizeof(g_pDepthCutoutPS));
 		m_shadowMapCutoutPSO.Finalize();
 	}
 	{
 		constexpr std::array ELEMENT_DESCS = {
-			D3D12_INPUT_ELEMENT_DESC{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			D3D12_INPUT_ELEMENT_DESC{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			D3D12_INPUT_ELEMENT_DESC{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			D3D12_INPUT_ELEMENT_DESC{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			D3D12_INPUT_ELEMENT_DESC{"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "TEXCOORD", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "NORMAL", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "TANGENT", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
+			D3D12_INPUT_ELEMENT_DESC{.SemanticName = "BITANGENT", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0},
 		};
+
 		const std::array rsmFormats = {m_rsmNormalBuffer.GetFormat(), m_rsmDiffuseBuffer.GetFormat(), m_rsmSpecularBuffer.GetFormat()};
 
 		m_reflectiveShadowMapPSO.SetRootSignature(m_rsmRootSig);
@@ -227,8 +236,8 @@ void MyRenderer::Initialize()
 		m_reflectiveShadowMapPSO.SetBlendState(Graphics::BlendDisable);
 		m_reflectiveShadowMapPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
 		m_reflectiveShadowMapPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), m_rsmDepthBuffer.GetFormat());
-		m_reflectiveShadowMapPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
-		m_reflectiveShadowMapPSO.SetPixelShader(g_pReflectiveShadowMapPS, sizeof(g_pReflectiveShadowMapPS));
+		m_reflectiveShadowMapPSO.SetVertexShader(static_cast<const void*>(g_pReflectiveShadowMapVS), sizeof(g_pReflectiveShadowMapVS));
+		m_reflectiveShadowMapPSO.SetPixelShader(static_cast<const void*>(g_pReflectiveShadowMapPS), sizeof(g_pReflectiveShadowMapPS));
 		m_reflectiveShadowMapPSO.Finalize();
 
 		m_reflectiveShadowMapCutoutPSO.SetRootSignature(m_rsmRootSig);
@@ -238,8 +247,8 @@ void MyRenderer::Initialize()
 		m_reflectiveShadowMapCutoutPSO.SetBlendState(Graphics::BlendDisable);
 		m_reflectiveShadowMapCutoutPSO.SetDepthStencilState(Graphics::DepthStateReadWrite);
 		m_reflectiveShadowMapCutoutPSO.SetRenderTargetFormats(static_cast<UINT>(rsmFormats.size()), rsmFormats.data(), m_rsmDepthBuffer.GetFormat());
-		m_reflectiveShadowMapCutoutPSO.SetVertexShader(g_pReflectiveShadowMapVS, sizeof(g_pReflectiveShadowMapVS));
-		m_reflectiveShadowMapCutoutPSO.SetPixelShader(g_pReflectiveShadowMapCutoutPS, sizeof(g_pReflectiveShadowMapCutoutPS));
+		m_reflectiveShadowMapCutoutPSO.SetVertexShader(static_cast<const void*>(g_pReflectiveShadowMapVS), sizeof(g_pReflectiveShadowMapVS));
+		m_reflectiveShadowMapCutoutPSO.SetPixelShader(static_cast<const void*>(g_pReflectiveShadowMapCutoutPS), sizeof(g_pReflectiveShadowMapCutoutPS));
 		m_reflectiveShadowMapCutoutPSO.Finalize();
 
 		m_lightingPSO.SetRootSignature(m_lightingRootSig);
@@ -249,8 +258,8 @@ void MyRenderer::Initialize()
 		m_lightingPSO.SetBlendState(Graphics::BlendDisable);
 		m_lightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
 		m_lightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		m_lightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		m_lightingPSO.SetPixelShader(g_pLightingPS, sizeof(g_pLightingPS));
+		m_lightingPSO.SetVertexShader(static_cast<const void*>(g_pLightingVS), sizeof(g_pLightingVS));
+		m_lightingPSO.SetPixelShader(static_cast<const void*>(g_pLightingPS), sizeof(g_pLightingPS));
 		m_lightingPSO.Finalize();
 
 		m_lightingCutoutPSO.SetRootSignature(m_lightingRootSig);
@@ -260,8 +269,8 @@ void MyRenderer::Initialize()
 		m_lightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
 		m_lightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
 		m_lightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		m_lightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		m_lightingCutoutPSO.SetPixelShader(g_pLightingCutoutPS, sizeof(g_pLightingCutoutPS));
+		m_lightingCutoutPSO.SetVertexShader(static_cast<const void*>(g_pLightingVS), sizeof(g_pLightingVS));
+		m_lightingCutoutPSO.SetPixelShader(static_cast<const void*>(g_pLightingCutoutPS), sizeof(g_pLightingCutoutPS));
 		m_lightingCutoutPSO.Finalize();
 
 		m_previousLightingPSO.SetRootSignature(m_lightingRootSig);
@@ -271,8 +280,8 @@ void MyRenderer::Initialize()
 		m_previousLightingPSO.SetBlendState(Graphics::BlendDisable);
 		m_previousLightingPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
 		m_previousLightingPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		m_previousLightingPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		m_previousLightingPSO.SetPixelShader(g_pPreviousLightingPS, sizeof(g_pPreviousLightingPS));
+		m_previousLightingPSO.SetVertexShader(static_cast<const void*>(g_pLightingVS), sizeof(g_pLightingVS));
+		m_previousLightingPSO.SetPixelShader(static_cast<const void*>(g_pPreviousLightingPS), sizeof(g_pPreviousLightingPS));
 		m_previousLightingPSO.Finalize();
 
 		m_previousLightingCutoutPSO.SetRootSignature(m_lightingRootSig);
@@ -282,8 +291,8 @@ void MyRenderer::Initialize()
 		m_previousLightingCutoutPSO.SetBlendState(Graphics::BlendDisable);
 		m_previousLightingCutoutPSO.SetDepthStencilState(Graphics::DepthStateTestEqual);
 		m_previousLightingCutoutPSO.SetRenderTargetFormat(Graphics::g_SceneColorBuffer.GetFormat(), Graphics::g_SceneDepthBuffer.GetFormat());
-		m_previousLightingCutoutPSO.SetVertexShader(g_pLightingVS, sizeof(g_pLightingVS));
-		m_previousLightingCutoutPSO.SetPixelShader(g_pPreviousLightingCutoutPS, sizeof(g_pPreviousLightingCutoutPS));
+		m_previousLightingCutoutPSO.SetVertexShader(static_cast<const void*>(g_pLightingVS), sizeof(g_pLightingVS));
+		m_previousLightingCutoutPSO.SetPixelShader(static_cast<const void*>(g_pPreviousLightingCutoutPS), sizeof(g_pPreviousLightingCutoutPS));
 		m_previousLightingCutoutPSO.Finalize();
 	}
 }
