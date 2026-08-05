@@ -47,10 +47,10 @@ void ModelViewer::Startup()
 	m_renderer.Initialize();
 	PostEffects::EnableAdaptation = false;
 
-	ASSERT(m_scene.m_model.Load(L"../Sponza/sponza.h3d"), "Failed to load model");
-	ASSERT(m_scene.m_model.GetMeshCount() > 0, "Model contains no meshes");
-	ASSERT(m_scene.m_modelCutout.Load(L"../Sponza/sponza_cutout.h3d"), "Failed to load model");
-	ASSERT(m_scene.m_modelCutout.GetMeshCount() > 0, "Model contains no meshes");
+	ASSERT(m_scene.m_opaqueModel.Load(L"../Sponza/sponza.h3d"), "Failed to load model");
+	ASSERT(m_scene.m_opaqueModel.GetMeshCount() > 0, "Model contains no meshes");
+	ASSERT(m_scene.m_cutoutModel.Load(L"../Sponza/sponza_cutout.h3d"), "Failed to load model");
+	ASSERT(m_scene.m_cutoutModel.GetMeshCount() > 0, "Model contains no meshes");
 
 	constexpr float NEAR_Z_CLIP = 1.0f;
 	constexpr float FAR_Z_CLIP = 10000.0f;
@@ -80,7 +80,7 @@ void ModelViewer::Cleanup()
 
 void ModelViewer::Update(const float deltaT)
 {
-	const ScopedTimer _prof(L"Update State");
+	const ScopedTimer _prof{L"Update State"};
 
 	if (GameInput::IsPressed(GameInput::kMouse0))
 	{

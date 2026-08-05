@@ -334,7 +334,7 @@ void MyRenderer::Render(GraphicsContext& context, const Scene& scene)
 
 void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& scene)
 {
-	const ScopedTimer profile(L"Reflective Shadow Map", context);
+	const ScopedTimer profile{L"Reflective Shadow Map", context};
 
 	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
 	const std::array rtvs = {m_rsmNormalBuffer.GetRTV(), m_rsmDiffuseBuffer.GetRTV(), m_rsmSpecularBuffer.GetRTV()};
@@ -346,12 +346,12 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
 	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
 	context.SetRenderTargets(static_cast<UINT>(rtvs.size()), rtvs.data(), m_rsmDepthBuffer.GetDSV());
 	context.SetPipelineState(m_reflectiveShadowMapPSO);
-	Draw(context, scene.m_model);
+	Draw(context, scene.m_opaqueModel);
 
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	if (scene.m_cutoutModel.GetMeshCount() > 0)
 	{
 		context.SetPipelineState(m_reflectiveShadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
+		Draw(context, scene.m_cutoutModel);
 	}
 
 	context.BeginResourceTransition(m_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -362,7 +362,7 @@ void MyRenderer::ReflectiveShadowMapPass(GraphicsContext& context, const Scene& 
 
 void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
 {
-	const ScopedTimer profile(L"Shadow Map", context);
+	const ScopedTimer profile{L"Shadow Map", context};
 
 	const XMMATRIX& viewProj = scene.m_spotlight.GetViewProjMatrix();
 
@@ -372,13 +372,13 @@ void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
 	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
 	context.SetDepthStencilTarget(m_shadowMap.GetDSV());
 	context.SetPipelineState(m_shadowMapPSO);
-	DrawDepth(context, scene.m_model);
+	DrawDepth(context, scene.m_opaqueModel);
 
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	if (scene.m_cutoutModel.GetMeshCount() > 0)
 	{
 		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
 		context.SetPipelineState(m_shadowMapCutoutPSO);
-		Draw(context, scene.m_modelCutout);
+		Draw(context, scene.m_cutoutModel);
 	}
 
 	context.BeginResourceTransition(m_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -386,7 +386,7 @@ void MyRenderer::ShadowMapPass(GraphicsContext& context, const Scene& scene)
 
 void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
 {
-	const ScopedTimer profile(L"Depth", context);
+	const ScopedTimer profile{L"Depth", context};
 
 	const XMMATRIX& viewProj = scene.m_camera.GetViewProjMatrix();
 
@@ -396,13 +396,13 @@ void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
 	context.SetDynamicConstantBufferView(ROOT_INDEX_VS_CBV, sizeof(viewProj), &viewProj);
 	context.SetDepthStencilTarget(Graphics::g_SceneDepthBuffer.GetDSV());
 	context.SetPipelineState(m_depthPSO);
-	DrawDepth(context, scene.m_model);
+	DrawDepth(context, scene.m_opaqueModel);
 
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	if (scene.m_cutoutModel.GetMeshCount() > 0)
 	{
 		context.SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, Renderer::s_TextureHeap.GetHeapPointer());
 		context.SetPipelineState(m_depthCutoutPSO);
-		Draw(context, scene.m_modelCutout);
+		Draw(context, scene.m_cutoutModel);
 	}
 
 	context.BeginResourceTransition(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
@@ -410,7 +410,7 @@ void MyRenderer::DepthPass(GraphicsContext& context, const Scene& scene)
 
 void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
 {
-	const ScopedTimer profile(L"Lighting", context);
+	const ScopedTimer profile{L"Lighting", context};
 
 	context.TransitionResource(Graphics::g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ);
 	context.TransitionResource(m_shadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -441,12 +441,12 @@ void MyRenderer::LightingPass(GraphicsContext& context, const Scene& scene)
 	context.SetDescriptorTable(ROOT_INDEX_PS_SRV1, m_lightingDescriptorTable);
 	context.SetRenderTarget(Graphics::g_SceneColorBuffer.GetRTV(), Graphics::g_SceneDepthBuffer.GetDSV_DepthReadOnly());
 	context.SetPipelineState(s_previousSGLighting ? m_previousLightingPSO : m_lightingPSO);
-	Draw(context, scene.m_model);
+	Draw(context, scene.m_opaqueModel);
 
-	if (scene.m_modelCutout.m_Header.meshCount > 0)
+	if (scene.m_cutoutModel.GetMeshCount() > 0)
 	{
 		context.SetPipelineState(s_previousSGLighting ? m_previousLightingCutoutPSO : m_lightingCutoutPSO);
-		Draw(context, scene.m_modelCutout);
+		Draw(context, scene.m_cutoutModel);
 	}
 }
 
@@ -463,7 +463,7 @@ void MyRenderer::VSGLGenerationPass(ComputeContext& context, const Math::Camera&
 	assert(m_rsmSpecularBuffer.GetWidth() == RSM_WIDTH);
 	assert(m_rsmSpecularBuffer.GetHeight() == RSM_WIDTH);
 
-	const ScopedTimer profile(L"VSGL Generation", context);
+	const ScopedTimer profile{L"VSGL Generation", context};
 
 	context.TransitionResource(m_rsmDepthBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	context.TransitionResource(m_rsmNormalBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
