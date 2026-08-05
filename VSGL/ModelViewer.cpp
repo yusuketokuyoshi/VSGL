@@ -73,7 +73,7 @@ void ModelViewer::Startup()
 
 void ModelViewer::Cleanup()
 {
-	m_scene.Clear();
+	m_scene = {};
 	m_renderer.Shutdown();
 	Renderer::Shutdown();
 }

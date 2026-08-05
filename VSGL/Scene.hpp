@@ -14,14 +14,6 @@ namespace vsgl
 class Scene
 {
   public:
-	void Clear()
-	{
-		m_model.Clear();
-		m_modelCutout.Clear();
-		m_cameraController = nullptr;
-		m_spotlightController = nullptr;
-	}
-
 	static constexpr uint32_t MODEL_SRV_COUNT = 4;
 	static constexpr uint32_t CUTOUT_SRV_COUNT = 1; // Alpha cutout for the depth pass.
 	ModelH3D m_model;
